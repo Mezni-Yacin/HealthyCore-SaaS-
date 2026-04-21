@@ -8,18 +8,46 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+// Super admin
 import UsersManagement from './pages/Super_admin/UsersManagement';
 import GovernoratesManagement from './pages/Super_admin/GovernoratesManagement';
 import CitiesManagement from './pages/Super_admin/CitiesManagement';
 import CabinetsManagement from './pages/Super_admin/CabinetsManagement';
 import DoctorCabinets from './pages/Doctor/DoctorCabinets';
-import DoctorSchedule from './pages/Doctor/DoctorSchedule';
-import CabinetDirectory from './pages/CabinetDirectory';
-import DoctorSecretaries from './pages/Doctor/DoctorSecretaries';
 import DoctorsManagement from './pages/Super_admin/DoctorsManagement';
 import PlansManagement from './pages/Super_admin/PlansManagement';
 import SpecialtiesManagement from './pages/Super_admin/SpecialtiesManagement';
 import SubscriptionsManagement from './pages/Super_admin/SubscriptionsManagement';
+// Doctor
+import DoctorMedicalRecords from './pages/Doctor/DoctorMedicalRecords';
+import DoctorMedicalRecordDetail from './pages/Doctor/DoctorMedicalRecordDetail';
+import DoctorSchedule from './pages/Doctor/DoctorSchedule';
+import DoctorSecretaries from './pages/Doctor/DoctorSecretaries';
+import DoctorAppointments from './pages/Doctor/DoctorAppointments';
+import DoctorAppointmentDetail from './pages/Doctor/DoctorAppointmentDetail';
+// Patient
+import PatientMedicalRecords from './pages/Patient/PatientMedicalRecords';
+import PatientMedicalRecordDetail from './pages/Patient/PatientMedicalRecordDetail';
+import PatientAppointments from './pages/Patient/PatientAppointments';
+import PatientAppointmentDetail from './pages/Patient/PatientAppointmentDetail';
+// Secretary
+import SecretaryMedicalRecords from './pages/Secretary/SecretaryMedicalRecords';
+import SecretaryMedicalRecordDetail from './pages/Secretary/SecretaryMedicalRecordDetail';
+import SecretaryAppointments from './pages/Secretary/SecretaryAppointments';
+import SecretaryAppointmentDetail from './pages/Secretary/SecretaryAppointmentDetail';
+import SecretaryCabinets from './pages/Secretary/SecretaryCabinets';
+import SecretaryCabinetEdit from './pages/Secretary/SecretaryCabinetEdit';
+
+// Cabinet
+import CabinetDirectory from './pages/Cabinet/CabinetDirectory';
+import CabinetProfile from './pages/Cabinet/CabinetProfile';
+// Chat
+import ChatPage from './pages/Chat/ChatPage';
+import MessagesPage from './pages/Chat/MessagesPage';
+
+import DoctorWaitingQueue from './pages/DoctorWaitingQueue';
+import PatientWaitingQueue from './pages/PatientWaitingQueue';
+import SecretaryWaitingQueue from './pages/SecretaryWaitingQueue';
 
 function NotFound() {
   return (
@@ -48,11 +76,39 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
 
+              <Route path="/chat/:cabinetId" element={<ChatPage />} />
+              <Route path="/messages" element={<MessagesPage />} />
+
+              {/* ====================== PROFIL CABINET PUBLIC ====================== */}
+              <Route path="/cabinet-profile/:id" element={<CabinetProfile />} />
+              {/* ====================== PATIENT ====================== */}
+              <Route path="/patient-records" element={<PatientMedicalRecords />} />
+              <Route path="/patient-records/:id" element={<PatientMedicalRecordDetail />} />
+              <Route path="/my-appointments" element={<PatientAppointments />} />
+              <Route path="/my-appointments/:id" element={<PatientAppointmentDetail />} />
+
+              {/* ====================== SECRÉTAIRE ====================== */}
+              <Route path="/secretary-cabinets" element={<SecretaryCabinets />} />
+              <Route path="/secretary-cabinets/:id" element={<SecretaryCabinetEdit />} />
+              <Route path="/secretary-records" element={<SecretaryMedicalRecords />} />
+              <Route path="/secretary-records/:id" element={<SecretaryMedicalRecordDetail />} />
+              <Route path="/appointments/secretary" element={<SecretaryAppointments />} />
+              <Route path="/appointments/secretary/:id" element={<SecretaryAppointmentDetail />} />
               {/* ====================== MÉDECIN (propriétaire) ====================== */}
               <Route path="/cabinet-directory" element={<CabinetDirectory />} />
               <Route path="/my-secretaries" element={<DoctorSecretaries />} />
               <Route path="/my-schedule" element={<DoctorSchedule />} />
               <Route path="/my-cabinets" element={<DoctorCabinets />} />
+              <Route path="/medical-records" element={<DoctorMedicalRecords />} />
+              <Route path="/medical-records/:id" element={<DoctorMedicalRecordDetail />} />
+              <Route path="/appointments" element={<DoctorAppointments />} />
+              <Route path="/appointments/doctor" element={<DoctorAppointments />} />
+              <Route path="/appointments/doctor/:id" element={<DoctorAppointmentDetail />} />
+
+              {/* ====================== FILE D'ATTENTE ====================== */}
+              <Route path="/waiting-queue" element={<DoctorWaitingQueue />} />
+              <Route path="/patient-queue" element={<PatientWaitingQueue />} />
+              <Route path="/secretary-queue" element={<SecretaryWaitingQueue />} />
 
               {/* ====================== SUPER ADMIN ====================== */}
               <Route path="/users" element={<UsersManagement />} />

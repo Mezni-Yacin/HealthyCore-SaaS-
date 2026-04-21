@@ -582,10 +582,7 @@ class DoctorUnavailabilitySerializer(serializers.ModelSerializer):
 # ====================== CABINET — ÉCRITURE (MÉDECIN PROPRIÉTAIRE) ================
 
 class DoctorCabinetWriteSerializer(CabinetWriteSerializer):
-    """
-    Serializer pour les médecins propriétaires de cabinets.
-    Hérite de CabinetWriteSerializer mais retire 'owner' (auto) et 'secretaries' (géré séparément).
-    """
+    """Serializer pour les médecins propriétaires de cabinets."""
     class Meta(CabinetWriteSerializer.Meta):
         fields = [
             'name', 'address', 'city',
@@ -666,20 +663,16 @@ class DoctorSecretaryCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         import secrets
         import string
-
         cabinet = validated_data.pop('cabinet', None)
         email = validated_data.get('email', '')
         phone = validated_data.get('phone_number')
-
         base_username = email.split('@')[0] if email else f"sec_{secrets.token_hex(4)}"
         username = base_username
         counter = 1
         while User.objects.filter(username=username).exists():
             username = f"{base_username}_{counter}"
             counter += 1
-
         password = ''.join(secrets.choice(string.ascii_letters + string.digits + '!@#$%&*') for _ in range(14))
-
         user = User(
             username=username,
             email=validated_data.get('email', ''),
@@ -691,10 +684,8 @@ class DoctorSecretaryCreateSerializer(serializers.ModelSerializer):
         )
         user.set_password(password)
         user.save()
-
         if cabinet:
             cabinet.secretaries.add(user)
-
         user._generated_password = password
         return user
 
@@ -732,10 +723,7 @@ class DoctorSecretaryUpdateSerializer(serializers.ModelSerializer):
 
 # ====================== CABINET PUBLIC — LISTE (pour patients) ==============
 class PublicCabinetSerializer(serializers.ModelSerializer):
-    """
-    Serializer pour l'annuaire public des cabinets (vue patient).
-    ✅ Ajouté latitude et longitude pour la carte
-    """
+    """Serializer pour l'annuaire public des cabinets (vue liste)."""
     city_name = serializers.CharField(source='city.name', read_only=True)
     governorate_name = serializers.CharField(source='city.governorate.name', read_only=True)
     specialties_list = serializers.SerializerMethodField()
@@ -753,9 +741,8 @@ class PublicCabinetSerializer(serializers.ModelSerializer):
             'specialties_list', 'doctors_info', 'doctors_count',
             'cnam_affiliated', 'opening_hours', 'opening_hours_display',
             'appointment_duration',
-            'logo_url',
-            'avg_rating',
-            'latitude', 'longitude',        # ✅ AJOUTÉ pour la carte
+            'logo_url', 'avg_rating',
+            'latitude', 'longitude',
             'is_active',
         ]
 
@@ -768,17 +755,14 @@ class PublicCabinetSerializer(serializers.ModelSerializer):
             avails = d.availabilities.filter(is_available=True)
             avail_list = [
                 {
-                    'day': a.day,
-                    'day_display': a.get_day_display(),
-                    'start_time': str(a.start_time)[:5],
-                    'end_time': str(a.end_time)[:5],
+                    'day': a.day, 'day_display': a.get_day_display(),
+                    'start_time': str(a.start_time)[:5], 'end_time': str(a.end_time)[:5],
                     'slot_duration': a.slot_duration,
                 }
                 for a in avails
             ]
             doctors.append({
-                'id': d.id,
-                'full_name': d.user.get_full_name(),
+                'id': d.id, 'full_name': d.user.get_full_name(),
                 'specialty': d.specialty.name if d.specialty else None,
                 'specialty_id': d.specialty_id,
                 'consultation_price': float(d.consultation_price) if d.consultation_price else 0,
@@ -800,9 +784,7 @@ class PublicCabinetSerializer(serializers.ModelSerializer):
 
     def get_avg_rating(self, obj):
         from django.db.models import Avg
-        avg = obj.doctors.filter(user__is_active=True).aggregate(
-            avg_rating=Avg('rating')
-        )['avg_rating']
+        avg = obj.doctors.filter(user__is_active=True).aggregate(avg_rating=Avg('rating'))['avg_rating']
         return round(float(avg), 1) if avg else None
 
     def get_opening_hours_display(self, obj):
@@ -811,8 +793,7 @@ class PublicCabinetSerializer(serializers.ModelSerializer):
             return None
         day_labels = {
             'lundi': 'Lundi', 'mardi': 'Mardi', 'mercredi': 'Mercredi',
-            'jeudi': 'Jeudi', 'vendredi': 'Vendredi', 'samedi': 'Samedi',
-            'dimanche': 'Dimanche',
+            'jeudi': 'Jeudi', 'vendredi': 'Vendredi', 'samedi': 'Samedi', 'dimanche': 'Dimanche',
         }
         result = {}
         for day_key, day_label in day_labels.items():
@@ -828,18 +809,340 @@ class PublicCabinetSerializer(serializers.ModelSerializer):
         return None
 
 
-# ====================== CABINET PUBLIC — DÉTAIL (pour patients) ==============
+# ====================== CABINET PUBLIC — DÉTAIL COMPLET (Profil Cabinet) ==============
 class PublicCabinetDetailSerializer(PublicCabinetSerializer):
     """
-    Version détaillée pour la page détail d'un cabinet.
+    ✅ Version ENRICHI pour le profil complet du cabinet.
+    Ajoute : banner, accreditation, owner_name, cnam_code,
+    les infos DÉTAILLÉES de chaque médecin,
+    et les secrétaires du cabinet.
     """
     banner_url = serializers.SerializerMethodField()
     owner_name = serializers.CharField(source='owner.get_full_name', read_only=True)
+    owner_email = serializers.EmailField(source='owner.email', read_only=True)
+    secretaries_info = serializers.SerializerMethodField()
 
     class Meta(PublicCabinetSerializer.Meta):
         fields = PublicCabinetSerializer.Meta.fields + [
-            'banner_url', 'owner_name', 'accreditation',
+            'banner_url', 'owner_name', 'owner_email',
+            'accreditation', 'cnam_code',
+            'secretaries_info',
         ]
 
     def get_banner_url(self, obj):
         return self._get_image_url(obj.banner)
+
+    def get_secretaries_info(self, obj):
+        """✅ Retourne les secrétaires du cabinet avec photo, nom, email, téléphone."""
+        secretaries = []
+        for s in obj.secretaries.filter(is_active=True):
+            profile_photo_url = None
+            initials = None
+            full_name = s.get_full_name() or s.username
+
+            if hasattr(s, 'profile_photo') and s.profile_photo:
+                profile_photo_url = self._get_image_url(s.profile_photo)
+
+            if not profile_photo_url:
+                parts = full_name.strip().split()
+                if len(parts) >= 2:
+                    initials = f"{parts[0][0]}{parts[-1][0]}".upper()
+                elif parts:
+                    initials = parts[0][0].upper()
+
+            secretaries.append({
+                'id': s.id,
+                'full_name': full_name,
+                'email': s.email,
+                'phone_number': str(s.phone_number) if hasattr(s, 'phone_number') and s.phone_number else None,
+                'profile_photo_url': profile_photo_url,
+                'initials': initials,
+                'role': 'secretary',
+            })
+        return secretaries
+
+    def get_doctors_info(self, obj):
+        """
+        ✅ Version ENRICHI : retourne toutes les informations du médecin
+        pour le profil complet du cabinet.
+        """
+        from django.utils import timezone as dtz_now
+
+        doctors = []
+        for d in obj.doctors.filter(user__is_active=True).select_related('user', 'specialty'):
+            # ── Toutes les disponibilités (activées ET désactivées) pour le calendrier ──
+            all_avails = d.availabilities.all().order_by('day', 'start_time')
+            avail_list = [
+                {
+                    'id': a.id,
+                    'day': a.day,
+                    'day_display': a.get_day_display(),
+                    'start_time': str(a.start_time)[:5],
+                    'end_time': str(a.end_time)[:5],
+                    'slot_duration': a.slot_duration,
+                    'is_available': a.is_available,
+                }
+                for a in all_avails
+            ]
+
+            # ── Indisponibilités à venir ──
+            now = dtz_now.now()
+            upcoming_unavails = d.unavailabilities.filter(
+                end_datetime__gte=now
+            ).order_by('start_datetime')
+            unavail_list = [
+                {
+                    'id': u.id,
+                    'start_datetime': u.start_datetime.isoformat(),
+                    'end_datetime': u.end_datetime.isoformat(),
+                    'reason': u.reason,
+                    'reason_display': u.get_reason_display(),
+                    'description': u.description,
+                    'is_recurring': u.is_recurring,
+                }
+                for u in upcoming_unavails
+            ]
+
+            # ── Créneaux activés uniquement (pour le résumé) ──
+            active_avails = [a for a in avail_list if a['is_available']]
+
+            doctors.append({
+                'id': d.id,
+                'full_name': d.user.get_full_name(),
+                'email': d.user.email,
+                'phone_number': str(d.user.phone_number) if d.user.phone_number else None,
+                'specialty': d.specialty.name if d.specialty else None,
+                'specialty_id': d.specialty_id,
+                'specialty_code': d.specialty.code if d.specialty else None,
+                'license_number': d.license_number,
+                'consultation_price': float(d.consultation_price) if d.consultation_price else 0,
+                'rating': float(d.rating) if d.rating else 0,
+                'review_count': d.review_count,
+                'years_experience': d.years_experience,
+                'bio': d.bio or '',
+                'education': d.education or [],
+                'certifications': d.certifications or [],
+                'accepts_new_patients': d.accepts_new_patients,
+                'teleconsultation_available': d.teleconsultation_available,
+                'profile_photo_url': self._get_image_url(d.profile_photo),
+                'availabilities': active_avails,
+                'all_availabilities': avail_list,
+                'upcoming_unavailabilities': unavail_list,
+            })
+        return doctors
+
+
+# ====================== SECRÉTAIRE — ÉDITION CABINET ================================
+
+class SecretaryCabinetListSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour la liste des cabinets assignés à un secrétaire.
+    """
+    city_name = serializers.CharField(source='city.name', read_only=True)
+    governorate_name = serializers.CharField(source='city.governorate.name', read_only=True)
+    specialties_names = serializers.SerializerMethodField()
+    doctors_count = serializers.SerializerMethodField()
+    logo_url = serializers.SerializerMethodField()
+    owner_name = serializers.CharField(source='owner.get_full_name', read_only=True)
+
+    class Meta:
+        model = Cabinet
+        fields = [
+            'id', 'name', 'address', 'city', 'city_name', 'governorate_name',
+            'phone_number', 'email', 'website',
+            'specialties_names', 'doctors_count',
+            'cnam_affiliated', 'is_active',
+            'logo_url', 'owner_name',
+            'opening_hours',
+        ]
+        read_only_fields = fields
+
+    def get_specialties_names(self, obj):
+        return list(obj.specialties.values_list('name', flat=True))
+
+    def get_doctors_count(self, obj):
+        return obj.doctors.filter(user__is_active=True).count()
+
+    def get_logo_url(self, obj):
+        if obj.logo:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.logo.url) if request else obj.logo.url
+        return None
+
+
+class SecretaryCabinetDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour le détail d'un cabinet assigné au secrétaire.
+    Inclut les médecins avec leurs infos complètes.
+    """
+    city_name = serializers.CharField(source='city.name', read_only=True)
+    governorate_name = serializers.CharField(source='city.governorate.name', read_only=True)
+    specialties_names = serializers.SerializerMethodField()
+    specialties_list = serializers.SerializerMethodField()
+    doctors_info = serializers.SerializerMethodField()
+    doctors_count = serializers.SerializerMethodField()
+    secretaries_info = serializers.SerializerMethodField()
+    logo_url = serializers.SerializerMethodField()
+    banner_url = serializers.SerializerMethodField()
+    owner_name = serializers.CharField(source='owner.get_full_name', read_only=True)
+    opening_hours_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cabinet
+        fields = [
+            'id', 'name', 'address', 'city', 'city_name', 'governorate_name',
+            'phone_number', 'email', 'website',
+            'specialties_names', 'specialties_list',
+            'doctors_info', 'doctors_count',
+            'secretaries_info',
+            'cnam_affiliated', 'cnam_code', 'accreditation',
+            'opening_hours', 'opening_hours_display', 'appointment_duration',
+            'logo', 'logo_url', 'banner', 'banner_url',
+            'is_active', 'owner_name',
+            'latitude', 'longitude',
+        ]
+        read_only_fields = ['id', 'logo_url', 'banner_url', 'owner_name']
+
+    def get_specialties_names(self, obj):
+        return list(obj.specialties.values_list('name', flat=True))
+
+    def get_specialties_list(self, obj):
+        return list(obj.specialties.values('id', 'name', 'code'))
+
+    def get_doctors_count(self, obj):
+        return obj.doctors.filter(user__is_active=True).count()
+
+    def get_doctors_info(self, obj):
+        doctors = []
+        for d in obj.doctors.filter(user__is_active=True).select_related('user', 'specialty'):
+            avails = d.availabilities.filter(is_available=True)
+            avail_list = [
+                {
+                    'id': a.id,
+                    'day': a.day,
+                    'day_display': a.get_day_display(),
+                    'start_time': str(a.start_time)[:5],
+                    'end_time': str(a.end_time)[:5],
+                    'slot_duration': a.slot_duration,
+                    'is_available': a.is_available,
+                }
+                for a in d.availabilities.all().order_by('day', 'start_time')
+            ]
+            doctors.append({
+                'id': d.id,
+                'full_name': d.user.get_full_name(),
+                'email': d.user.email,
+                'phone_number': str(d.user.phone_number) if d.user.phone_number else None,
+                'specialty': d.specialty.name if d.specialty else None,
+                'specialty_id': d.specialty_id,
+                'consultation_price': float(d.consultation_price) if d.consultation_price else 0,
+                'rating': float(d.rating) if d.rating else 0,
+                'review_count': d.review_count,
+                'years_experience': d.years_experience,
+                'bio': d.bio or '',
+                'accepts_new_patients': d.accepts_new_patients,
+                'teleconsultation_available': d.teleconsultation_available,
+                'profile_photo_url': self._get_image_url(d.profile_photo),
+                'availabilities': avail_list,
+            })
+        return doctors
+
+    def get_secretaries_info(self, obj):
+        secretaries = []
+        for s in obj.secretaries.filter(is_active=True):
+            profile_photo_url = None
+            initials = None
+            full_name = s.get_full_name() or s.username
+            if hasattr(s, 'profile_photo') and s.profile_photo:
+                profile_photo_url = self._get_image_url(s.profile_photo)
+            if not profile_photo_url:
+                parts = full_name.strip().split()
+                if len(parts) >= 2:
+                    initials = f"{parts[0][0]}{parts[-1][0]}".upper()
+                elif parts:
+                    initials = parts[0][0].upper()
+            secretaries.append({
+                'id': s.id,
+                'full_name': full_name,
+                'email': s.email,
+                'phone_number': str(s.phone_number) if hasattr(s, 'phone_number') and s.phone_number else None,
+                'profile_photo_url': profile_photo_url,
+                'initials': initials,
+            })
+        return secretaries
+
+    def get_logo_url(self, obj):
+        return self._get_image_url(obj.logo)
+
+    def get_banner_url(self, obj):
+        return self._get_image_url(obj.banner)
+
+    def get_opening_hours_display(self, obj):
+        hours = obj.opening_hours
+        if not hours or not isinstance(hours, dict):
+            return None
+        day_labels = {
+            'lundi': 'Lundi', 'mardi': 'Mardi', 'mercredi': 'Mercredi',
+            'jeudi': 'Jeudi', 'vendredi': 'Vendredi', 'samedi': 'Samedi', 'dimanche': 'Dimanche',
+        }
+        result = {}
+        for day_key, day_label in day_labels.items():
+            slots = hours.get(day_key, [])
+            if slots and isinstance(slots, list) and len(slots) > 0:
+                result[day_key] = {'label': day_label, 'slots': slots}
+        return result if result else None
+
+    def _get_image_url(self, image_field):
+        if image_field:
+            request = self.context.get('request')
+            return request.build_absolute_uri(image_field.url) if request else image_field.url
+        return None
+
+
+class SecretaryCabinetUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour la modification du cabinet par le secrétaire.
+    Champs limités : ne peut pas changer owner, supprimer, etc.
+    """
+    city = serializers.PrimaryKeyRelatedField(
+        queryset=City.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    specialties = serializers.PrimaryKeyRelatedField(
+        queryset=MedicalSpecialty.objects.all(),
+        many=True,
+        required=False,
+    )
+
+    class Meta:
+        model = Cabinet
+        fields = [
+            'name', 'address', 'city',
+            'phone_number', 'email', 'website',
+            'specialties',
+            'cnam_affiliated', 'cnam_code', 'accreditation',
+            'opening_hours', 'appointment_duration',
+            'logo', 'banner',
+            'latitude', 'longitude',
+        ]
+
+    def validate_opening_hours(self, value):
+        if not value or not isinstance(value, dict):
+            return value
+        valid_days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
+        for day, slots in value.items():
+            if day.lower() not in valid_days:
+                raise serializers.ValidationError(
+                    f"Jour invalide : '{day}'. Jours autorisés : {', '.join(valid_days)}."
+                )
+            if not isinstance(slots, list):
+                raise serializers.ValidationError(
+                    f"Les horaires de '{day}' doivent être une liste de créneaux."
+                )
+            for slot in slots:
+                if not isinstance(slot, str) or '-' not in slot:
+                    raise serializers.ValidationError(
+                        f"Créneau invalide pour '{day}' : '{slot}'. Format attendu : 'HH:MM-HH:MM'."
+                    )
+        return value

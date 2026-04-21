@@ -1,11 +1,3 @@
-"""
-Configuration finale et optimisée de settings.py
-- Support upload profile_picture (MEDIA_URL/ROOT + MultiPartParser)
-- CORS large en dev (mobile + web)
-- JWT bien configuré
-- Prêt pour React + Expo + Postman
-"""
-
 import pymysql
 pymysql.install_as_MySQLdb()
 
@@ -45,6 +37,8 @@ INSTALLED_APPS = [
     'apps.medical_records',
     'apps.billing',
     'apps.audit_notifications',
+    'apps.messaging',
+    'apps.waiting_queue',
 ]
 
 MIDDLEWARE = [
@@ -82,7 +76,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'saas_medical_db',
+        'NAME': 'healthycore_saas',
         'USER': 'root',
         'PASSWORD': '',
         'HOST': '127.0.0.1',

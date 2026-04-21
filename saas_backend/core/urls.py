@@ -11,6 +11,11 @@ urlpatterns = [
     path('api/users/', include('apps.users.urls')),
      # API Cabinets (NOUVEAU)
     path('api/cabinets/', include('apps.cabinets.urls')),
+    path('api/medical-records/', include('apps.medical_records.urls')),
+    path('api/appointments/', include('apps.appointments.urls')),
+    path('api/messaging/', include('apps.messaging.urls')),
+    path('api/waiting-queue/', include('apps.waiting_queue.urls')),
+
 ]
 
 # Servir les médias en développement (photos de profil)

@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CabinetViewSet, DoctorViewSet, DoctorCabinetViewSet,
     DoctorAvailabilityViewSet, DoctorUnavailabilityViewSet,
-    DoctorSecretaryViewSet, PublicCabinetViewSet,
+    DoctorSecretaryViewSet, PublicCabinetViewSet,SecretaryCabinetViewSet
 )
 
 # =============== ROUTER POUR CABINETS SEULEMENT ===============
@@ -124,7 +124,18 @@ urlpatterns = [
     path('my-secretaries/<int:pk>/', DoctorSecretaryViewSet.as_view({
         'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy',
     }), name='my-secretary-detail'),
+    # =============== SECRÉTAIRE — CABINETS ASSIGNÉS ===============
+    path('secretary/cabinets/', SecretaryCabinetViewSet.as_view({
+        'get': 'list',
+    }), name='secretary-cabinet-list'),
 
+    path('secretary/cabinets/stats/', SecretaryCabinetViewSet.as_view({
+        'get': 'stats',
+    }), name='secretary-cabinet-stats'),
+
+    path('secretary/cabinets/<int:pk>/', SecretaryCabinetViewSet.as_view({
+        'get': 'retrieve', 'patch': 'partial_update',
+    }), name='secretary-cabinet-detail'),
     # =============== CABINETS — VIA ROUTER (Super Admin) — EN DERNIER ! ===============
     path('', include(router.urls)),
 ]

@@ -24,6 +24,9 @@ from .serializers import (
     DoctorSecretaryUpdateSerializer,
     PublicCabinetSerializer,
     PublicCabinetDetailSerializer,
+    SecretaryCabinetListSerializer,
+    SecretaryCabinetDetailSerializer,
+    SecretaryCabinetUpdateSerializer,
 )
 from apps.users.permissions import IsSuperAdmin
 
@@ -227,7 +230,6 @@ class DoctorViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         doctor = serializer.save()
-        # ✅ FIX : Lier automatiquement le médecin à ses cabinets (via le champ cabinets du serializer)
         print(f"[DOCTOR CREATED] Dr. {doctor.user.get_full_name()} ({doctor.specialty.name})")
 
     def perform_update(self, serializer):
@@ -646,7 +648,7 @@ class PublicCabinetViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """
         Retourne TOUS les cabinets actifs et non supprimés.
-        ✅ FIX : Ajouté .distinct() après annotate() pour éviter les doublons
+        ✅ FIX : prefetch 'secretaries' pour le profil cabinet
         """
         queryset = Cabinet.objects.filter(
             is_active=True, is_deleted=False,
@@ -656,10 +658,11 @@ class PublicCabinetViewSet(viewsets.ReadOnlyModelViewSet):
             'specialties',
             'doctors', 'doctors__user', 'doctors__specialty',
             'doctors__availabilities',
+            'secretaries',  # ✅ FIX : précharger les secrétaires pour le profil
         ).annotate(
             avg_rating=Avg('doctors__rating'),
             doctor_count=Count('doctors', distinct=True),
-        ).distinct()  # ✅ FIX : éviter les doublons du JOIN avec Avg
+        ).distinct()
         return queryset
 
     def get_serializer_class(self):
@@ -682,41 +685,34 @@ class PublicCabinetViewSet(viewsets.ReadOnlyModelViewSet):
         # ── Filtres personnalisés additionnels ──
         params = request.query_params
 
-        # Filtre par spécialité
         specialty = params.get('specialty')
         if specialty:
             queryset = queryset.filter(specialties__id=specialty).distinct()
 
-        # Filtre par ville
         city = params.get('city')
         if city:
             queryset = queryset.filter(city_id=city)
 
-        # Filtre par gouvernorat
         governorate = params.get('governorate')
         if governorate:
             queryset = queryset.filter(city__governorate_id=governorate)
 
-        # Filtre CNAM
         cnam = params.get('cnam')
         if cnam and cnam.lower() == 'true':
             queryset = queryset.filter(cnam_affiliated=True)
 
-        # Filtre téléconsultation
         tele = params.get('teleconsultation')
         if tele and tele.lower() == 'true':
             queryset = queryset.filter(
                 doctors__teleconsultation_available=True
             ).distinct()
 
-        # Filtre accepte nouveaux patients
         accepts = params.get('accepts_patients')
         if accepts and accepts.lower() == 'true':
             queryset = queryset.filter(
                 doctors__accepts_new_patients=True
             ).distinct()
 
-        # Filtre prix min
         min_price = params.get('min_price')
         if min_price:
             try:
@@ -726,7 +722,6 @@ class PublicCabinetViewSet(viewsets.ReadOnlyModelViewSet):
             except ValueError:
                 pass
 
-        # Filtre prix max
         max_price = params.get('max_price')
         if max_price:
             try:
@@ -759,20 +754,16 @@ class PublicCabinetViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def filters(self, request):
         """Retourne les options de filtres pour l'annuaire."""
-        # Spécialités
         specialties = MedicalSpecialty.objects.all().order_by('name')
 
-        # Villes (filtrable par gouvernorat)
         gov_id = request.query_params.get('governorate')
         if gov_id:
             cities = City.objects.filter(governorate_id=gov_id).order_by('name')
         else:
             cities = City.objects.all().select_related('governorate').order_by('name')
 
-        # Gouvernorats
         governorates = Governorate.objects.all().order_by('name')
 
-        # Prix min/max (parmi les médecins actifs)
         prices = Doctor.objects.filter(
             user__is_active=True,
             consultation_price__isnull=False,
@@ -787,4 +778,73 @@ class PublicCabinetViewSet(viewsets.ReadOnlyModelViewSet):
                 'min': float(prices['min_price']) if prices['min_price'] else 0,
                 'max': float(prices['max_price']) if prices['max_price'] else 0,
             },
+        })
+    
+
+# ====================== VIEWSET CABINETS DU SECRÉTAIRE ======================
+
+class SecretaryCabinetViewSet(viewsets.GenericViewSet):
+    """
+    Gestion des cabinets par le secrétaire.
+    Le secrétaire ne voit et ne modifie que les cabinets auxquels il est assigné.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_my_cabinets(self):
+        """Retourne les cabinets où le secrétaire est assigné."""
+        return Cabinet.objects.filter(
+            secretaries=self.request.user, is_deleted=False
+        ).select_related('city', 'city__governorate', 'owner').prefetch_related(
+            'specialties', 'doctors', 'doctors__user', 'doctors__specialty',
+            'doctors__availabilities', 'secretaries',
+        ).distinct()
+
+    def get_serializer_class(self):
+        if self.action in ('update', 'partial_update'):
+            return SecretaryCabinetUpdateSerializer
+        if self.action == 'retrieve':
+            return SecretaryCabinetDetailSerializer
+        return SecretaryCabinetListSerializer
+
+    def get_serializer_context(self):
+        return {'request': self.request}
+
+    def list(self, request):
+        """Liste des cabinets assignés au secrétaire."""
+        queryset = self._get_my_cabinets().order_by('name')
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        """Détail d'un cabinet assigné au secrétaire."""
+        cabinet = get_object_or_404(self._get_my_cabinets(), pk=pk)
+        serializer = self.get_serializer(cabinet)
+        return Response(serializer.data)
+
+    def partial_update(self, request, pk=None):
+        """Mise à jour partielle du cabinet par le secrétaire."""
+        cabinet = get_object_or_404(self._get_my_cabinets(), pk=pk)
+        serializer = SecretaryCabinetUpdateSerializer(
+            cabinet, data=request.data, partial=True,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        print(f"[SECRETARY CABINET UPDATED] {request.user.username} updated cabinet: {cabinet.name}")
+        detail_serializer = SecretaryCabinetDetailSerializer(
+            cabinet, context={'request': request}
+        )
+        return Response(detail_serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Statistiques pour le secrétaire."""
+        my_cabinets = self._get_my_cabinets()
+        total = my_cabinets.count()
+        active = my_cabinets.filter(is_active=True).count()
+        total_doctors = sum(c.doctors.filter(user__is_active=True).count() for c in my_cabinets)
+        return Response({
+            'total_cabinets': total,
+            'active_cabinets': active,
+            'total_doctors': total_doctors,
         })

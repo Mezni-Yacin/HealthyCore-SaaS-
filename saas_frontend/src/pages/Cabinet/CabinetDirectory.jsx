@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../services/api';
-import MapView from '../components/MapView';
+import { useNavigate } from 'react-router-dom';
+import api from '../../services/api';
+import MapView from '../../components/MapView';
 
 // ── Composant principal ─────────────────────────────────────────────────
 export default function CabinetDirectory() {
+  const navigate = useNavigate();
+
   // ── State ──────────────────────────────────────────────────────
   const [cabinets, setCabinets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,10 +40,6 @@ export default function CabinetDirectory() {
     price_range: { min: 0, max: 0 },
   });
   const [filtersLoading, setFiltersLoading] = useState(true);
-
-  // Cabinet sélectionné pour le détail
-  const [selectedCabinet, setSelectedCabinet] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -117,18 +116,9 @@ export default function CabinetDirectory() {
     search.trim()
   ].filter(Boolean).length;
 
-  // ── Fetch détail cabinet ───────────────────────────────────────
-  const openDetail = async (cabinet) => {
-    setDetailLoading(true);
-    setSelectedCabinet(cabinet);
-    try {
-      const { data } = await api.get(`/cabinets/directory/${cabinet.id}/`);
-      setSelectedCabinet(data);
-    } catch (err) {
-      setMessage("Erreur lors du chargement du détail.");
-    } finally {
-      setDetailLoading(false);
-    }
+  // ── Naviguer vers le profil cabinet ───────────────────────────
+  const goToProfile = (cabinetId) => {
+    navigate(`/cabinet-profile/${cabinetId}`);
   };
 
   // ── Helpers ───────────────────────────────────────────────────
@@ -336,7 +326,7 @@ export default function CabinetDirectory() {
             </div>
           ) : viewMode === 'map' ? (
             /* ═══ VUE CARTE ═══ */
-            <MapView cabinets={cabinets} onCabinetClick={openDetail} />
+            <MapView cabinets={cabinets} onCabinetClick={(cab) => goToProfile(cab.id)} />
           ) : (
             /* ═══ VUE LISTE ═══ */
             <>
@@ -344,7 +334,7 @@ export default function CabinetDirectory() {
                 {cabinets.map(cab => (
                   <div key={cab.id} className="col-md-6">
                     <div className="card h-100 shadow-sm border-0 hover-shadow" style={{ transition: 'box-shadow 0.2s', cursor: 'pointer' }}
-                      onClick={() => openDetail(cab)}>
+                      onClick={() => goToProfile(cab.id)}>
                       {/* Header du cabinet */}
                       <div className="card-body pb-2">
                         <div className="d-flex gap-3">
@@ -430,7 +420,7 @@ export default function CabinetDirectory() {
                           <span><i className="bi bi-telephone me-1"></i>{cab.phone_number}</span>
                         </div>
                         <span className="text-primary small fw-semibold">
-                          Voir détails <i className="bi bi-chevron-right"></i>
+                          Voir le profil <i className="bi bi-chevron-right"></i>
                         </span>
                       </div>
                     </div>
@@ -473,199 +463,6 @@ export default function CabinetDirectory() {
           )}
         </div>
       </div>
-
-      {/* ═══ MODAL DÉTAIL CABINET ═══ */}
-      {selectedCabinet && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-          onClick={() => setSelectedCabinet(null)}>
-          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
-            onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content shadow-lg">
-              {/* Header avec banner */}
-              {selectedCabinet.banner_url && (
-                <img src={selectedCabinet.banner_url} alt="" className="w-100" style={{ maxHeight: 180, objectFit: 'cover' }} />
-              )}
-              <div className="modal-header border-0 pb-0">
-                <div className="d-flex align-items-center gap-3">
-                  {selectedCabinet.logo_url ? (
-                    <img src={selectedCabinet.logo_url} alt={selectedCabinet.name}
-                      className="rounded-3 border" style={{ width: 56, height: 56, objectFit: 'cover' }} />
-                  ) : (
-                    <div className="rounded-3 bg-primary bg-opacity-10 d-flex align-items-center justify-content-center"
-                      style={{ width: 56, height: 56 }}>
-                      <i className="bi bi-hospital text-primary" style={{ fontSize: '1.5rem' }}></i>
-                    </div>
-                  )}
-                  <div>
-                    <h4 className="fw-bold mb-0">{selectedCabinet.name}</h4>
-                    <div className="text-muted small">
-                      <i className="bi bi-geo-alt me-1"></i>
-                      {selectedCabinet.address}, {selectedCabinet.city_name}, {selectedCabinet.governorate_name}
-                    </div>
-                  </div>
-                </div>
-                <button type="button" className="btn-close" onClick={() => setSelectedCabinet(null)} />
-              </div>
-
-              {detailLoading ? (
-                <div className="modal-body text-center py-5">
-                  <div className="spinner-border text-primary"></div>
-                </div>
-              ) : (
-                <div className="modal-body">
-                  {/* ✅ Mini carte dans le modal si coords GPS */}
-                  {selectedCabinet.latitude && selectedCabinet.longitude && (
-                    <div className="mb-4 rounded-3 overflow-hidden border" style={{ height: '200px' }}>
-                      <MapView cabinets={[selectedCabinet]} />
-                    </div>
-                  )}
-
-                  {/* Infos contact */}
-                  <div className="row g-2 mb-4">
-                    <div className="col-md-4">
-                      <div className="d-flex align-items-center gap-2 small">
-                        <i className="bi bi-telephone text-primary"></i>
-                        <a href={`tel:${selectedCabinet.phone_number}`} className="text-decoration-none">{selectedCabinet.phone_number}</a>
-                      </div>
-                    </div>
-                    <div className="col-md-4">
-                      <div className="d-flex align-items-center gap-2 small">
-                        <i className="bi bi-envelope text-primary"></i>
-                        <a href={`mailto:${selectedCabinet.email}`} className="text-decoration-none">{selectedCabinet.email}</a>
-                      </div>
-                    </div>
-                    {selectedCabinet.website && (
-                      <div className="col-md-4">
-                        <div className="d-flex align-items-center gap-2 small">
-                          <i className="bi bi-globe text-primary"></i>
-                          <a href={selectedCabinet.website} target="_blank" rel="noopener noreferrer" className="text-decoration-none">{selectedCabinet.website}</a>
-                        </div>
-                      </div>
-                    )}
-                    {/* Lien Google Maps */}
-                    {selectedCabinet.latitude && selectedCabinet.longitude && (
-                      <div className="col-12">
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${selectedCabinet.latitude},${selectedCabinet.longitude}`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="btn btn-sm btn-outline-primary"
-                        >
-                          <i className="bi bi-geo-alt me-1"></i> Ouvrir dans Google Maps
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Badges */}
-                  <div className="d-flex flex-wrap gap-2 mb-4">
-                    {selectedCabinet.cnam_affiliated && (
-                      <span className="badge bg-success"><i className="bi bi-check-circle me-1"></i>Conventionné CNAM</span>
-                    )}
-                    {selectedCabinet.specialties_list?.map(s => (
-                      <span key={s.id} className="badge bg-primary bg-opacity-10 text-primary">{s.name}</span>
-                    ))}
-                    {selectedCabinet.avg_rating && (
-                      <span className="badge bg-warning text-dark">
-                        <i className="bi bi-star-fill me-1"></i>Note moyenne : {selectedCabinet.avg_rating}/5
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Horaires d'ouverture */}
-                  {selectedCabinet.opening_hours_display && (
-                    <div className="mb-4">
-                      <h6 className="fw-bold mb-2"><i className="bi bi-clock me-2"></i>Horaires d'ouverture</h6>
-                      <div className="table-responsive">
-                        <table className="table table-sm table-bordered mb-0">
-                          <tbody>
-                            {Object.entries(selectedCabinet.opening_hours_display).map(([dayKey, dayData]) => (
-                              <tr key={dayKey}>
-                                <td className="fw-semibold" style={{ width: '30%', fontSize: '0.85rem' }}>{dayData.label}</td>
-                                <td style={{ fontSize: '0.85rem' }}>{dayData.slots.join(' | ')}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Médecins */}
-                  {(selectedCabinet.doctors_info || []).length > 0 && (
-                    <div>
-                      <h6 className="fw-bold mb-3">
-                        <i className="bi bi-people me-2"></i>
-                        Médecins ({selectedCabinet.doctors_count})
-                      </h6>
-                      <div className="row g-3">
-                        {selectedCabinet.doctors_info.map(doc => (
-                          <div key={doc.id} className="col-md-6">
-                            <div className="card border">
-                              <div className="card-body p-3">
-                                <div className="d-flex gap-3">
-                                  {doc.profile_photo_url ? (
-                                    <img src={doc.profile_photo_url} alt="" className="rounded-circle"
-                                      style={{ width: 50, height: 50, objectFit: 'cover' }} />
-                                  ) : (
-                                    <div className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center"
-                                      style={{ width: 50, height: 50 }}>
-                                      <i className="bi bi-person-fill text-primary"></i>
-                                    </div>
-                                  )}
-                                  <div className="flex-grow-1">
-                                    <h6 className="fw-bold mb-0">Dr. {doc.full_name}</h6>
-                                    <div className="text-muted small">{doc.specialty}</div>
-                                    <div className="d-flex gap-2 mt-1 flex-wrap">
-                                      {doc.consultation_price > 0 && (
-                                        <span className="badge bg-info text-dark">{doc.consultation_price.toFixed(3)} DT</span>
-                                      )}
-                                      {doc.accepts_new_patients && (
-                                        <span className="badge bg-success">Nouveaux patients</span>
-                                      )}
-                                      {doc.teleconsultation_available && (
-                                        <span className="badge text-white" style={{ backgroundColor: '#6f42c1' }}>Téléconsultation</span>
-                                      )}
-                                      {doc.years_experience > 0 && (
-                                        <span className="badge bg-light text-dark">{doc.years_experience} ans d'exp.</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Rating */}
-                                <div className="mt-2">{renderStars(doc.rating)} {doc.review_count > 0 && <small className="text-muted">({doc.review_count} avis)</small>}</div>
-
-                                {/* Disponibilités */}
-                                {(doc.availabilities || []).length > 0 && (
-                                  <div className="mt-2">
-                                    <small className="fw-semibold text-muted">Disponibilités :</small>
-                                    <div className="d-flex flex-wrap gap-1 mt-1">
-                                      {doc.availabilities.map((a, i) => (
-                                        <span key={i} className="badge bg-light text-dark" style={{ fontSize: '0.7rem' }}>
-                                          {DAY_LABELS[a.day]} {a.start_time}-{a.end_time}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Footer */}
-              <div className="modal-footer border-0">
-                <button type="button" className="btn btn-secondary" onClick={() => setSelectedCabinet(null)}>Fermer</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
