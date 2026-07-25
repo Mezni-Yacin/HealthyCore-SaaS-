@@ -1,0 +1,547 @@
+/* ══════════════════════════════════════════════════════════════════
+   DoctorDashboard.css — Styles premium pour le tableau de bord médecin
+   MedSaaS Pro
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Variables ── */
+.doc-dash {
+  --doc-primary: #0d6efd;
+  --doc-primary-light: #e7f1ff;
+  --doc-success: #198754;
+  --doc-success-light: #d1e7dd;
+  --doc-warning: #fd7e14;
+  --doc-warning-light: #fff3e0;
+  --doc-danger: #dc3545;
+  --doc-danger-light: #f8d7da;
+  --doc-purple: #6f42c1;
+  --doc-purple-light: #e8dff5;
+  --doc-cyan: #0dcaf0;
+  --doc-cyan-light: #cff4fc;
+  --doc-dark: #1e293b;
+  --doc-gray: #64748b;
+  --doc-light: #f8fafc;
+  --doc-border: #e2e8f0;
+  --doc-radius: 16px;
+  --doc-radius-sm: 10px;
+  --doc-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  --doc-shadow-hover: 0 8px 30px rgba(0,0,0,0.08);
+}
+
+/* ── Welcome Banner ── */
+.doc-welcome {
+  background: linear-gradient(135deg, #0d6efd 0%, #073b8a 60%, #052659 100%);
+  border-radius: var(--doc-radius);
+  padding: 2rem 2.25rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.doc-welcome::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+
+.doc-welcome::after {
+  content: '';
+  position: absolute;
+  bottom: -50px;
+  right: 120px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.03);
+}
+
+.doc-welcome .pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #51cf66;
+  display: inline-block;
+  margin-right: 0.5rem;
+  animation: docPulse 2s infinite;
+}
+
+@keyframes docPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+.doc-welcome h2 {
+  font-weight: 800;
+  font-size: 1.65rem;
+  margin-bottom: 0.3rem;
+}
+
+.doc-welcome .welcome-sub {
+  font-size: 0.95rem;
+  opacity: 0.8;
+  margin-bottom: 0;
+}
+
+.doc-welcome .welcome-date {
+  font-size: 0.82rem;
+  opacity: 0.6;
+  margin-top: 0.5rem;
+}
+
+.doc-welcome .welcome-clock {
+  font-size: 1.1rem;
+  font-weight: 600;
+  opacity: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Stat Cards ── */
+.doc-stat-card {
+  border: none;
+  border-radius: var(--doc-radius);
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  height: 100%;
+  box-shadow: var(--doc-shadow);
+  background: #fff;
+}
+
+.doc-stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--doc-shadow-hover);
+}
+
+.doc-stat-card .stat-body {
+  padding: 1.25rem 1.25rem 1rem;
+}
+
+.doc-stat-card .stat-icon-ring {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.doc-stat-card .stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.doc-stat-card .stat-label {
+  font-size: 0.78rem;
+  color: var(--doc-gray);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 0.15rem;
+}
+
+.doc-stat-card .stat-sub {
+  font-size: 0.73rem;
+  color: #94a3b8;
+  margin-top: 0.35rem;
+}
+
+.doc-stat-card .stat-progress {
+  height: 4px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.doc-stat-card .stat-progress .bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+
+/* ── Quick Actions ── */
+.doc-quick-action {
+  border-radius: var(--doc-radius-sm);
+  border: 2px solid var(--doc-border);
+  background: #fff;
+  padding: 1.1rem 0.75rem;
+  text-decoration: none;
+  color: var(--doc-dark);
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+  box-shadow: var(--doc-shadow);
+}
+
+.doc-quick-action:hover {
+  border-color: var(--doc-primary);
+  background: var(--doc-primary-light);
+  color: var(--doc-primary);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(13,110,253,0.12);
+  text-decoration: none;
+}
+
+.doc-quick-action .qa-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #fff;
+  transition: transform 0.2s ease;
+}
+
+.doc-quick-action:hover .qa-icon {
+  transform: scale(1.08);
+}
+
+.doc-quick-action .qa-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* ── Timeline (RDV du jour) ── */
+.doc-timeline {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.doc-timeline::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--doc-primary), var(--doc-border));
+  border-radius: 2px;
+}
+
+.doc-tl-item {
+  position: relative;
+  padding-bottom: 1.25rem;
+}
+
+.doc-tl-item:last-child {
+  padding-bottom: 0;
+}
+
+.doc-tl-dot {
+  position: absolute;
+  left: -1.5rem;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--doc-primary);
+  background: var(--doc-primary);
+  z-index: 1;
+}
+
+.doc-tl-dot.done {
+  background: var(--doc-success);
+  box-shadow: 0 0 0 2px var(--doc-success);
+}
+
+.doc-tl-dot.cancelled {
+  background: #cbd5e1;
+  box-shadow: 0 0 0 2px #cbd5e1;
+}
+
+.doc-tl-dot.current {
+  background: var(--doc-warning);
+  box-shadow: 0 0 0 2px var(--doc-warning), 0 0 0 5px rgba(253,126,20,0.2);
+  animation: docPulse 2s infinite;
+}
+
+.doc-tl-card {
+  border: 1px solid var(--doc-border);
+  border-radius: var(--doc-radius-sm);
+  padding: 0.85rem 1rem;
+  background: #fff;
+  transition: box-shadow 0.2s ease;
+  box-shadow: var(--doc-shadow);
+}
+
+.doc-tl-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+
+.doc-tl-time {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--doc-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.doc-tl-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--doc-dark);
+  margin-bottom: 0.15rem;
+}
+
+.doc-tl-info {
+  font-size: 0.78rem;
+  color: var(--doc-gray);
+  margin: 0;
+}
+
+/* ── Panel Cards ── */
+.doc-panel {
+  border: none;
+  border-radius: var(--doc-radius);
+  box-shadow: var(--doc-shadow);
+  background: #fff;
+  overflow: hidden;
+}
+
+.doc-panel .panel-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--doc-border);
+  display: flex;
+  align-items: center;
+  justify-content: between;
+  gap: 0.5rem;
+}
+
+.doc-panel .panel-head h6 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--doc-dark);
+}
+
+.doc-panel .panel-head .panel-badge {
+  background: var(--doc-danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2em 0.55em;
+  border-radius: 8px;
+  margin-left: auto;
+}
+
+.doc-panel .panel-body {
+  padding: 1rem 1.25rem;
+}
+
+/* ── Patient Row ── */
+.doc-patient-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s ease;
+}
+
+.doc-patient-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.doc-patient-row:first-child {
+  padding-top: 0;
+}
+
+.doc-patient-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.doc-patient-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--doc-dark);
+  margin-bottom: 0.1rem;
+}
+
+.doc-patient-meta {
+  font-size: 0.75rem;
+  color: var(--doc-gray);
+  margin: 0;
+}
+
+/* ── Queue Mini Item ── */
+.doc-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--doc-radius-sm);
+  background: var(--doc-warning-light);
+  margin-bottom: 0.5rem;
+  transition: transform 0.15s ease;
+}
+
+.doc-queue-item:hover {
+  transform: translateX(3px);
+}
+
+.doc-queue-item:last-child {
+  margin-bottom: 0;
+}
+
+.doc-queue-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--doc-warning);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.doc-queue-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--doc-dark);
+}
+
+.doc-queue-time {
+  font-size: 0.72rem;
+  color: var(--doc-gray);
+  margin: 0;
+}
+
+/* ── Section Title ── */
+.doc-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--doc-dark);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.doc-section-title i {
+  font-size: 0.9rem;
+  color: var(--doc-primary);
+}
+
+/* ── Badge ── */
+.doc-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.25em 0.6em;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ── Empty State ── */
+.doc-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.doc-empty i {
+  font-size: 2.2rem;
+  color: #cbd5e1;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.doc-empty p {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ── Skeleton ── */
+.doc-skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: docShimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes docShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Tip Card ── */
+.doc-tip {
+  border-radius: var(--doc-radius-sm);
+  background: linear-gradient(135deg, #e7f1ff 0%, #d1e7dd 100%);
+  padding: 1.15rem 1.25rem;
+  border: 1px solid #bee3f8;
+}
+
+.doc-tip .tip-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--doc-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.doc-tip .tip-text {
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .doc-welcome {
+    padding: 1.5rem;
+  }
+
+  .doc-welcome h2 {
+    font-size: 1.3rem;
+  }
+
+  .doc-stat-card .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .doc-stat-card .stat-icon-ring {
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+  }
+}

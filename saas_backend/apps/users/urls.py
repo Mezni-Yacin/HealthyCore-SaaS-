@@ -18,29 +18,29 @@ from .views import (
     MedicalSpecialtyViewSet,
 )
 
-# Router pour les ViewSets
 router = DefaultRouter()
-router.register(r'manage', UserManagementViewSet, basename='user-management')
+# === CORRECTION ICI ===
+router.register(r'user-management', UserManagementViewSet, basename='user-management')
 router.register(r'subscription-plans', SubscriptionPlanViewSet, basename='subscription-plan')
 router.register(r'subscriptions', SubscriptionViewSet, basename='subscription')
 router.register(r'cities', CityViewSet, basename='city')
 router.register(r'governorates', GovernorateViewSet, basename='governorate')
-router.register(r'specialties', MedicalSpecialtyViewSet, basename='medical-specialty') 
+router.register(r'specialties', MedicalSpecialtyViewSet, basename='medical-specialty')
 
 urlpatterns = [
-    # ====================== AUTHENTIFICATION JWT ======================
+    # Auth
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    # ====================== PROFIL UTILISATEUR CONNECTÉ ======================
+    # Profils
     path('me/', user_me, name='user_me'),
     path('profile/', user_profile, name='user_profile'),
     path('patient-profile/', patient_profile, name='patient_profile'),
 
-    # ====================== DOCUMENTS ======================
+    # Documents
     path('documents/', upload_document, name='upload_document'),
     path('documents/<int:pk>/', delete_document, name='delete_document'),
     
-    # ====================== VIEWSETS (CRUD) ======================
+    # ViewSets
     path('', include(router.urls)),
 ]

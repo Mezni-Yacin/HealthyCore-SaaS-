@@ -1,0 +1,263 @@
+<!-- apps/billing/templates/billing/invoice_pdf.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 20mm 15mm;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #333;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        .header {
+            display: block;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #0d6efd;
+            padding-bottom: 15px;
+        }
+        .header-content {
+            width: 100%;
+            overflow: hidden;
+        }
+        .cabinet-info {
+            float: left;
+            width: 60%;
+        }
+        .cabinet-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #0d6efd;
+            margin: 0 0 5px 0;
+        }
+        .invoice-title-box {
+            float: right;
+            text-align: right;
+            width: 40%;
+        }
+        .invoice-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #0d6efd;
+            margin: 0;
+            letter-spacing: 2px;
+        }
+        .invoice-meta {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #555;
+        }
+        .info-grid {
+            width: 100%;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .patient-box {
+            float: left;
+            width: 45%;
+            margin-right: 5%;
+        }
+        .doctor-box {
+            float: left;
+            width: 50%;
+        }
+        .info-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #6c757d;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .info-value {
+            font-size: 13px;
+            font-weight: bold;
+            color: #212529;
+        }
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        table.items th {
+            background-color: #0d6efd;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        table.items td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        table.items tr:last-child td {
+            border-bottom: none;
+        }
+        table.items tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .totals-section {
+            width: 50%;
+            float: right;
+            margin-bottom: 40px;
+        }
+        .totals-section table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals-section td {
+            padding: 8px 10px;
+            border-bottom: 1px dotted #ccc;
+        }
+        .totals-section tr.total-row td {
+            border-bottom: 2px solid #0d6efd;
+            border-top: 2px solid #0d6efd;
+            font-size: 16px;
+            font-weight: bold;
+            color: #0d6efd;
+            background-color: #f8f9fa;
+            padding: 12px 10px;
+        }
+        .text-right { text-align: right; }
+        .text-green { color: #198754; font-weight: bold; }
+        .footer {
+            position: absolute;
+            bottom: 20mm;
+            left: 15mm;
+            right: 15mm;
+            border-top: 1px solid #dee2e6;
+            padding-top: 10px;
+            text-align: center;
+            font-size: 9px;
+            color: #6c757d;
+        }
+        .badge-valid {
+            background-color: #198754;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-content">
+            <div class="cabinet-info">
+                <h1 class="cabinet-name">{{ cabinet_name|default:"MedSaaS Pro" }}</h1>
+                <div>{{ cabinet_address|default:"Tunisie" }}</div>
+                <div>Tél: {{ cabinet_phone|default:"--" }} | Matricule: {{ cabinet_matricule|default:"--" }}</div>
+            </div>
+            <div class="invoice-title-box">
+                <h2 class="invoice-title">FACTURE</h2>
+                <div class="invoice-meta">
+                    <strong>N° :</strong> {{ invoice.invoice_number }}<br>
+                    <strong>Date :</strong> {{ invoice.issue_date|date:"d/m/Y" }}<br>
+                    <strong>Échéance :</strong> {{ invoice.due_date|date:"d/m/Y" }}
+                    {% if invoice.is_validated %}
+                        <br><span class="badge-valid">VALIDÉE</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div style="clear: both;"></div>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-box patient-box">
+            <span class="info-label">Patient</span>
+            <div class="info-value">{{ patient_name }}</div>
+        </div>
+        <div class="info-box doctor-box">
+            <span class="info-label">Médecin / Docteur</span>
+            <div class="info-value">{{ doctor_name|default:"--" }}</div>
+        </div>
+        <div style="clear: both;"></div>
+    </div>
+
+    <table class="items">
+        <thead>
+            <tr>
+                <th style="width: 60%;">Désignation</th>
+                <th style="width: 20%;">Montant (TND)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Consultation médicale {% if appointment_date %}du {{ appointment_date }}{% endif %}</td>
+                <td class="text-right">{{ invoice.subtotal }} TND</td>
+            </tr>
+            {% if invoice.tax_amount != "0.000" %}
+            <tr>
+                <td>Taxe</td>
+                <td class="text-right">{{ invoice.tax_amount }} TND</td>
+            </tr>
+            {% endif %}
+            {% if invoice.discount_amount != "0.000" %}
+            <tr>
+                <td>Remise</td>
+                <td class="text-right" style="color: #dc3545;">- {{ invoice.discount_amount }} TND</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="totals-section">
+        <table>
+            <tr>
+                <td>Sous-total</td>
+                <td class="text-right">{{ invoice.subtotal }} TND</td>
+            </tr>
+            {% if invoice.cnam_contribution != "0.000" %}
+            <tr>
+                <td>Prise en charge CNAM</td>
+                <td class="text-right text-green">- {{ invoice.cnam_contribution }} TND</td>
+            </tr>
+            {% endif %}
+            {% if invoice.insurance_contribution != "0.000" %}
+            <tr>
+                <td>Prise en charge Assurance</td>
+                <td class="text-right text-green">- {{ invoice.insurance_contribution }} TND</td>
+            </tr>
+            {% endif %}
+            <tr class="total-row">
+                <td>NET À PAYER</td>
+                <td class="text-right">{{ invoice.total_amount }} TND</td>
+            </tr>
+            {% if patient_contribution %}
+            <tr>
+                <td style="font-size: 10px; color: #666;">Part du patient</td>
+                <td class="text-right" style="font-size: 10px; color: #666;">{{ patient_contribution }} TND</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+    
+    <div style="clear: both;"></div>
+
+    {% if invoice.notes %}
+    <div style="margin-top: 20px; font-size: 10px; color: #555;">
+        <strong>Notes :</strong> {{ invoice.notes }}
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <strong>MedSaaS Pro</strong> — Logiciel de gestion médicale<br>
+        Ce document est une facture numérique générée automatiquement et tient lieu de reçu.
+    </div>
+
+</body>
+</html>

@@ -89,6 +89,16 @@ export default function SidebarSuperAdmin() {
           Abonnements
         </NavLink>
       </li>
+            {/* Facturation */}
+      <li className="nav-item mt-3">
+        <h6 className="px-3 text-uppercase text-secondary small fw-bold mb-2">Facturation</h6>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/invoices-management" className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-primary' : ''}`}>
+          <i className="bi bi-receipt-cutoff me-2"></i>
+          Factures
+        </NavLink>
+      </li>
 
     </SidebarBase>
   );

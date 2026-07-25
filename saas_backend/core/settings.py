@@ -4,6 +4,18 @@ pymysql.install_as_MySQLdb()
 from pathlib import Path
 from datetime import timedelta
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ═══════════════════════════════════════════════════════════════
+# 🔑 CONFIGURATION IA - COLLE TA VRAIE CLE MISTRAL ICI ⬇️
+# ═══════════════════════════════════════════════════════════════
+MISTRAL_API_KEY = "q5N7ryHSnkpL2Sjr65GLcHeRdqDM8U4W"
+# ═══════════════════════════════════════════════════════════════
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -24,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Librairies tierces
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
@@ -39,6 +52,7 @@ INSTALLED_APPS = [
     'apps.audit_notifications',
     'apps.messaging',
     'apps.waiting_queue',
+    'apps.ai',  # <-- Application IA ajoutée
 ]
 
 MIDDLEWARE = [
@@ -135,7 +149,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PARSER_CLASSES': (
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.FormParser',
-        'rest_framework.parsers.MultiPartParser',  # ← OBLIGATOIRE pour upload photo
+        'rest_framework.parsers.MultiPartParser',  # OBLIGATOIRE pour upload photo
     ),
 }
 

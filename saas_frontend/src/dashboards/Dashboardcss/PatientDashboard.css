@@ -1,0 +1,598 @@
+/* ══════════════════════════════════════════════════════════════════
+   PatientDashboard.css — Styles premium pour le tableau de bord patient
+   MedSaaS Pro
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Variables ── */
+.pat-dash {
+  --pat-primary: #0d6efd;
+  --pat-primary-light: #e7f1ff;
+  --pat-success: #198754;
+  --pat-success-light: #d1e7dd;
+  --pat-warning: #fd7e14;
+  --pat-warning-light: #fff3e0;
+  --pat-danger: #dc3545;
+  --pat-danger-light: #f8d7da;
+  --pat-purple: #6f42c1;
+  --pat-purple-light: #e8dff5;
+  --pat-pink: #d63384;
+  --pat-pink-light: #f8d0e6;
+  --pat-cyan: #0dcaf0;
+  --pat-cyan-light: #cff4fc;
+  --pat-dark: #1e293b;
+  --pat-gray: #64748b;
+  --pat-light: #f8fafc;
+  --pat-border: #e2e8f0;
+  --pat-radius: 16px;
+  --pat-radius-sm: 10px;
+  --pat-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  --pat-shadow-hover: 0 8px 30px rgba(0,0,0,0.08);
+}
+
+/* ── Welcome Banner ── */
+.pat-welcome {
+  background: linear-gradient(135deg, #198754 0%, #0a6843 50%, #053a25 100%);
+  border-radius: var(--pat-radius);
+  padding: 2rem 2.25rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.pat-welcome::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -60px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+
+.pat-welcome::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  right: 140px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.03);
+}
+
+.pat-welcome .pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #51cf66;
+  display: inline-block;
+  margin-right: 0.5rem;
+  animation: patPulse 2s infinite;
+}
+
+@keyframes patPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+.pat-welcome h2 {
+  font-weight: 800;
+  font-size: 1.65rem;
+  margin-bottom: 0.3rem;
+}
+
+.pat-welcome .welcome-sub {
+  font-size: 0.95rem;
+  opacity: 0.85;
+  margin-bottom: 0;
+}
+
+.pat-welcome .welcome-date {
+  font-size: 0.82rem;
+  opacity: 0.6;
+  margin-top: 0.5rem;
+}
+
+.pat-welcome .welcome-clock {
+  font-size: 1.1rem;
+  font-weight: 600;
+  opacity: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Stat Cards ── */
+.pat-stat-card {
+  border: none;
+  border-radius: var(--pat-radius);
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  height: 100%;
+  box-shadow: var(--pat-shadow);
+  background: #fff;
+}
+
+.pat-stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--pat-shadow-hover);
+}
+
+.pat-stat-card .stat-body {
+  padding: 1.25rem 1.25rem 1rem;
+}
+
+.pat-stat-card .stat-icon-ring {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.pat-stat-card .stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.pat-stat-card .stat-label {
+  font-size: 0.78rem;
+  color: var(--pat-gray);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 0.15rem;
+}
+
+.pat-stat-card .stat-sub {
+  font-size: 0.73rem;
+  color: #94a3b8;
+  margin-top: 0.35rem;
+}
+
+/* ── Quick Actions ── */
+.pat-quick-action {
+  border-radius: var(--pat-radius-sm);
+  border: 2px solid var(--pat-border);
+  background: #fff;
+  padding: 1.1rem 0.75rem;
+  text-decoration: none;
+  color: var(--pat-dark);
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+  box-shadow: var(--pat-shadow);
+}
+
+.pat-quick-action:hover {
+  border-color: var(--pat-success);
+  background: var(--pat-success-light);
+  color: var(--pat-success);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(25,135,84,0.12);
+  text-decoration: none;
+}
+
+.pat-quick-action .qa-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #fff;
+  transition: transform 0.2s ease;
+}
+
+.pat-quick-action:hover .qa-icon {
+  transform: scale(1.08);
+}
+
+.pat-quick-action .qa-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* ── Next Appointment Hero Card ── */
+.pat-next-appt {
+  border-radius: var(--pat-radius);
+  overflow: hidden;
+  background: #fff;
+  box-shadow: var(--pat-shadow);
+  transition: box-shadow 0.25s ease;
+}
+
+.pat-next-appt:hover {
+  box-shadow: var(--pat-shadow-hover);
+}
+
+.pat-next-appt .appt-hero {
+  background: linear-gradient(135deg, #0d6efd 0%, #073b8a 100%);
+  padding: 1.5rem 1.75rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.pat-next-appt .appt-hero::after {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+
+.pat-next-appt .appt-hero .appt-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
+}
+
+.pat-next-appt .appt-hero .appt-date {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.pat-next-appt .appt-hero .appt-month {
+  font-size: 1rem;
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+.pat-next-appt .appt-hero .appt-day-name {
+  font-size: 0.85rem;
+  opacity: 0.65;
+}
+
+.pat-next-appt .appt-detail {
+  padding: 1.25rem 1.75rem;
+}
+
+.pat-next-appt .appt-detail .appt-doctor {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pat-dark);
+  margin-bottom: 0.15rem;
+}
+
+.pat-next-appt .appt-detail .appt-specialty {
+  font-size: 0.82rem;
+  color: var(--pat-gray);
+  margin-bottom: 0.75rem;
+}
+
+.pat-next-appt .appt-detail .appt-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--pat-dark);
+  margin-bottom: 0.5rem;
+}
+
+.pat-next-appt .appt-detail .appt-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.pat-next-appt .appt-detail .appt-info-row i {
+  width: 18px;
+  text-align: center;
+  color: var(--pat-primary);
+}
+
+/* ── Panel Cards ── */
+.pat-panel {
+  border: none;
+  border-radius: var(--pat-radius);
+  box-shadow: var(--pat-shadow);
+  background: #fff;
+  overflow: hidden;
+}
+
+.pat-panel .panel-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--pat-border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pat-panel .panel-head h6 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--pat-dark);
+}
+
+.pat-panel .panel-body {
+  padding: 1rem 1.25rem;
+}
+
+/* ── Queue Status Card ── */
+.pat-queue-card {
+  border-radius: var(--pat-radius);
+  overflow: hidden;
+  box-shadow: var(--pat-shadow);
+}
+
+.pat-queue-card.queue-active {
+  background: linear-gradient(135deg, #fff8e1 0%, #fff3e0 100%);
+  border: 2px solid #ffcc02;
+}
+
+.pat-queue-card.queue-empty {
+  background: linear-gradient(135deg, #e8f5e9 0%, #d1e7dd 100%);
+  border: 2px solid #81c784;
+}
+
+.pat-queue-card .queue-inner {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.pat-queue-card .queue-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.pat-queue-card .queue-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.pat-queue-card .queue-sub {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ── Medical Record Row ── */
+.pat-record-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.pat-record-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pat-record-row:first-child {
+  padding-top: 0;
+}
+
+.pat-record-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.pat-record-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--pat-dark);
+  margin-bottom: 0.1rem;
+}
+
+.pat-record-meta {
+  font-size: 0.75rem;
+  color: var(--pat-gray);
+  margin: 0;
+}
+
+/* ── Appointment List Item ── */
+.pat-appt-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem;
+  border-radius: var(--pat-radius-sm);
+  border: 1px solid var(--pat-border);
+  margin-bottom: 0.6rem;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  background: #fff;
+}
+
+.pat-appt-item:last-child {
+  margin-bottom: 0;
+}
+
+.pat-appt-item:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  border-color: #cbd5e1;
+}
+
+.pat-appt-date-box {
+  width: 50px;
+  height: 54px;
+  border-radius: 10px;
+  background: var(--pat-primary-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pat-appt-date-box .box-day {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--pat-primary);
+  line-height: 1;
+}
+
+.pat-appt-date-box .box-month {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--pat-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+.pat-appt-info .appt-doc-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--pat-dark);
+  margin-bottom: 0.1rem;
+}
+
+.pat-appt-info .appt-doc-meta {
+  font-size: 0.78rem;
+  color: var(--pat-gray);
+  margin-bottom: 0.15rem;
+}
+
+.pat-appt-info .appt-time {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--pat-primary);
+}
+
+/* ── Badge ── */
+.pat-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.25em 0.6em;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ── Section Title ── */
+.pat-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pat-dark);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pat-section-title i {
+  font-size: 0.9rem;
+  color: var(--pat-success);
+}
+
+/* ── Empty State ── */
+.pat-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.pat-empty i {
+  font-size: 2.2rem;
+  color: #cbd5e1;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.pat-empty p {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ── Tip Card ── */
+.pat-tip {
+  border-radius: var(--pat-radius-sm);
+  background: linear-gradient(135deg, #d1e7dd 0%, #cff4fc 100%);
+  padding: 1.15rem 1.25rem;
+  border: 1px solid #b2dfdb;
+}
+
+.pat-tip .tip-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--pat-success);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.pat-tip .tip-text {
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Skeleton ── */
+.pat-skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: patShimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes patShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .pat-welcome {
+    padding: 1.5rem;
+  }
+
+  .pat-welcome h2 {
+    font-size: 1.3rem;
+  }
+
+  .pat-stat-card .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .pat-stat-card .stat-icon-ring {
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+  }
+
+  .pat-next-appt .appt-hero .appt-date {
+    font-size: 1.7rem;
+  }
+}

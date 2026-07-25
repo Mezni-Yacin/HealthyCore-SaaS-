@@ -5,17 +5,17 @@ from rest_framework.response import Response
 from rest_framework import viewsets, status, filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.views import TokenObtainPairView
-from django.db.models import Q,Count
+from django.db.models import Q, Count
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django.db import transaction
 
 from .models import User, Patient, UserDocument, Subscription, SubscriptionPlan, City, Governorate, MedicalSpecialty
 from .serializers import (
     UserSerializer, UserProfileSerializer, PatientProfileSerializer,
     UserDocumentSerializer, SubscriptionSerializer, SubscriptionCreateSerializer,
     SubscriptionPlanSerializer, UserCreateSerializer, UserUpdateSerializer,
-    UserDetailSerializer, CityListSerializer, CityWriteSerializer, GovernorateSerializer,MedicalSpecialtyListSerializer, MedicalSpecialtyWriteSerializer
+    UserDetailSerializer, CityListSerializer, CityWriteSerializer,
+    GovernorateSerializer, MedicalSpecialtyListSerializer, MedicalSpecialtyWriteSerializer
 )
 from .permissions import IsSuperAdmin
 
@@ -23,7 +23,7 @@ from .permissions import IsSuperAdmin
 # ====================== PAGINATION ======================
 
 class CityPagination(PageNumberPagination):
-    """Pagination pour les villes — 50 par page par défaut, max 200"""
+    """Pagination pour les villes"""
     page_size = 50
     page_size_query_param = 'page_size'
     max_page_size = 200
@@ -32,8 +32,7 @@ class CityPagination(PageNumberPagination):
 # ====================== AUTHENTIFICATION ======================
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+    pass
 
 
 # ====================== VUES PROFIL UTILISATEUR ======================
@@ -54,20 +53,22 @@ def user_profile(request):
     if request.method == 'GET':
         serializer = UserProfileSerializer(user, context={'request': request})
         return Response(serializer.data)
-    if request.method == 'PATCH':
-        forbidden_fields = {'role', 'username', 'email', 'is_verified', 'two_factor_enabled'}
-        if any(field in request.data for field in forbidden_fields):
-            return Response(
-                {"detail": "Modification interdite sur les champs sensibles (role, email, username, etc)."},
-                status=403
-            )
-        serializer = UserProfileSerializer(
-            user, data=request.data, partial=True, context={'request': request}
+
+    # PATCH
+    forbidden_fields = {'role', 'username', 'email', 'is_verified', 'two_factor_enabled'}
+    if any(field in request.data for field in forbidden_fields):
+        return Response(
+            {"detail": "Modification interdite sur les champs sensibles (role, email, username, etc)."},
+            status=403
         )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=400)
+
+    serializer = UserProfileSerializer(
+        user, data=request.data, partial=True, context={'request': request}
+    )
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=400)
 
 
 @api_view(['GET', 'PATCH'])
@@ -76,6 +77,7 @@ def patient_profile(request):
     """Gestion du profil patient"""
     if request.user.role != 'patient':
         return Response({"detail": "Seuls les patients peuvent accéder à ce profil."}, status=403)
+
     if request.method == 'GET':
         try:
             patient = Patient.objects.get(user=request.user)
@@ -83,20 +85,18 @@ def patient_profile(request):
             return Response(serializer.data)
         except Patient.DoesNotExist:
             return Response({})
-    if request.method == 'PATCH':
-        try:
-            patient = Patient.objects.get(user=request.user)
-            serializer = PatientProfileSerializer(patient, data=request.data, partial=True)
-        except Patient.DoesNotExist:
-            serializer = PatientProfileSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(user=request.user)
-                return Response(serializer.data, status=201)
-            return Response(serializer.errors, status=400)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=400)
+
+    # PATCH
+    try:
+        patient = Patient.objects.get(user=request.user)
+        serializer = PatientProfileSerializer(patient, data=request.data, partial=True)
+    except Patient.DoesNotExist:
+        serializer = PatientProfileSerializer(data=request.data)
+
+    if serializer.is_valid():
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=200 if 'patient' in locals() else 201)
+    return Response(serializer.errors, status=400)
 
 
 # ====================== DOCUMENTS ======================
@@ -122,7 +122,7 @@ def delete_document(request, pk):
         return Response({"detail": "Document non trouvé ou non autorisé."}, status=404)
 
 
-# ====================== VIEWSET UTILISATEURS (SUPER ADMIN) ======================
+# ====================== USER MANAGEMENT VIEWSET (SUPER ADMIN) ======================
 
 class UserManagementViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSuperAdmin]
@@ -137,7 +137,6 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         role = self.request.query_params.get('role')
         is_active = self.request.query_params.get('is_active')
         is_verified = self.request.query_params.get('is_verified')
-        search = self.request.query_params.get('search')
         
         if role:
             queryset = queryset.filter(role=role)
@@ -145,14 +144,6 @@ class UserManagementViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
         if is_verified is not None:
             queryset = queryset.filter(is_verified=is_verified.lower() == 'true')
-        if search:
-            queryset = queryset.filter(
-                Q(username__icontains=search) |
-                Q(email__icontains=search) |
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
-                Q(phone_number__icontains=search)
-            )
         
         return queryset
 
@@ -186,6 +177,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         
         instance.delete()
 
+    # Actions personnalisées
     @action(detail=True, methods=['post'])
     def reset_password(self, request, pk=None):
         user = self.get_object()
@@ -229,8 +221,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        from django.db.models import Count
-        
+        """Statistiques utilisateurs"""
         total = User.objects.count()
         active = User.objects.filter(is_active=True).count()
         verified = User.objects.filter(is_verified=True).count()
@@ -251,24 +242,8 @@ class UserManagementViewSet(viewsets.ModelViewSet):
             'by_role': {item['role']: item['count'] for item in by_role}
         })
 
-    @action(detail=False, methods=['get'])
-    def by_role(self, request):
-        role = request.query_params.get('role')
-        if not role:
-            return Response({"detail": "Paramètre 'role' requis."}, status=400)
-        users = User.objects.filter(role=role, is_active=True)
-        serializer = UserSerializer(users, many=True)
-        return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
-    def without_subscription(self, request):
-        """Retourne les utilisateurs sans abonnement"""
-        users = User.objects.exclude(subscription__isnull=False)
-        serializer = UserSerializer(users, many=True)
-        return Response(serializer.data)
-
-
-# ====================== VIEWSET PLANS D'ABONNEMENT ======================
+# ====================== SUBSCRIPTION PLAN ======================
 
 class SubscriptionPlanViewSet(viewsets.ModelViewSet):
     queryset = SubscriptionPlan.objects.all()
@@ -276,11 +251,10 @@ class SubscriptionPlanViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSuperAdmin]
 
 
-# ====================== VIEWSET ABONNEMENTS ======================
+# ====================== SUBSCRIPTION ======================
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.select_related('user', 'plan').all()
-    serializer_class = SubscriptionSerializer
     permission_classes = [IsAuthenticated, IsSuperAdmin]
 
     def get_serializer_class(self):
@@ -290,12 +264,11 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         user_id = request.data.get('user')
-        if user_id:
-            if Subscription.objects.filter(user_id=user_id).exists():
-                return Response(
-                    {"detail": "Cet utilisateur possède déjà un abonnement actif."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        if user_id and Subscription.objects.filter(user_id=user_id).exists():
+            return Response(
+                {"detail": "Cet utilisateur possède déjà un abonnement actif."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         period = request.data.get('period', 'monthly')
         period_days = {'monthly': 30, 'quarterly': 90, 'semiannual': 180, 'yearly': 365}
@@ -307,54 +280,16 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        subscription = serializer.save(end_date=end_date)
+        subscription = serializer.save()
         
         output_serializer = SubscriptionSerializer(subscription)
         headers = self.get_success_headers(output_serializer.data)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        
-        new_period = request.data.get('period')
-        if new_period and new_period != instance.period:
-            period_days = {'monthly': 30, 'quarterly': 90, 'semiannual': 180, 'yearly': 365}
-            days = period_days.get(new_period, 30)
-            instance.end_date = timezone.now() + timezone.timedelta(days=days)
-            instance.period = new_period
-        
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        
-        output_serializer = SubscriptionSerializer(instance)
-        return Response(output_serializer.data)
 
-    def perform_destroy(self, instance):
-        instance.delete()
-
-
-# ====================== VIEWSET VILLES (CRUD COMPLET) ======================
+# ====================== CITY ======================
 
 class CityViewSet(viewsets.ModelViewSet):
-    """
-    CRUD complet des villes — Réservé Super Admin
-
-    Endpoints :
-        GET    /users/cities/              → Lister (paginé)
-        POST   /users/cities/              → Créer
-        GET    /users/cities/<id>/         → Détail
-        PUT    /users/cities/<id>/         → Mise à jour complète
-        PATCH  /users/cities/<id>/         → Mise à jour partielle
-        DELETE /users/cities/<id>/         → Supprimer
-
-    Query params :
-        ?search=tunis           → Recherche par nom, code postal ou gouvernorat
-        ?governorate=1          → Filtrer par gouvernorat (ID)
-        ?ordering=name          → Trier
-        ?page=1&page_size=50    → Pagination
-    """
     queryset = City.objects.select_related('governorate').all()
     permission_classes = [IsAuthenticated, IsSuperAdmin]
     pagination_class = CityPagination
@@ -364,7 +299,6 @@ class CityViewSet(viewsets.ModelViewSet):
     ordering = ['name']
 
     def get_queryset(self):
-        """Permet le filtrage par gouvernorat via query param ?governorate=<id>"""
         queryset = super().get_queryset()
         governorate_id = self.request.query_params.get('governorate')
         if governorate_id:
@@ -372,67 +306,30 @@ class CityViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_serializer_class(self):
-        """Bascule entre serializer lecture et écriture"""
         if self.action in ['create', 'update', 'partial_update']:
             return CityWriteSerializer
         return CityListSerializer
 
-    def get_serializer_context(self):
-        return {'request': self.request}
-
     def perform_create(self, serializer):
         city = serializer.save()
-        print(
-            f"[CITY CREATED] {self.request.user.username} created city: "
-            f"{city.name} ({city.governorate.name})"
-        )
+        print(f"[CITY CREATED] {self.request.user.username} created city: {city.name}")
 
     def perform_update(self, serializer):
         city = serializer.save()
-        print(
-            f"[CITY UPDATED] {self.request.user.username} updated city: "
-            f"{city.name} ({city.governorate.name})"
-        )
+        print(f"[CITY UPDATED] {self.request.user.username} updated city: {city.name}")
 
     def perform_destroy(self, instance):
-        """Vérifier qu'aucun utilisateur n'utilise cette ville avant suppression."""
-        from rest_framework import serializers as drf_serializers
-
         users_count = User.objects.filter(city=instance).count()
         if users_count > 0:
-            raise drf_serializers.ValidationError({
-                "detail": (
-                    f"Impossible de supprimer la ville '{instance.name}' : "
-                    f"{users_count} utilisateur(s) sont rattaché(s) à cette ville. "
-                    f"Réaffectez-les d'abord."
-                )
+            raise ValidationError({
+                "detail": f"Impossible de supprimer la ville '{instance.name}' : {users_count} utilisateur(s) sont rattachés."
             })
-
-        print(
-            f"[CITY DELETED] {self.request.user.username} deleted city: "
-            f"{instance.name} ({instance.governorate.name})"
-        )
         instance.delete()
 
 
-# ====================== VIEWSET GOUVERNORATS (CRUD COMPLET) ======================
+# ====================== GOVERNORATE ======================
 
 class GovernorateViewSet(viewsets.ModelViewSet):
-    """
-    CRUD complet des gouvernorats — Réservé Super Admin
-
-    Endpoints :
-        GET    /users/governorates/           → Lister
-        POST   /users/governorates/           → Créer
-        GET    /users/governorates/<id>/      → Détail
-        PUT    /users/governorates/<id>/      → Mise à jour complète
-        PATCH  /users/governorates/<id>/      → Mise à jour partielle
-        DELETE /users/governorates/<id>/      → Supprimer
-
-    Query params :
-        ?search=tunis        → Recherche par nom ou code
-        ?ordering=name       → Trier
-    """
     queryset = Governorate.objects.all()
     serializer_class = GovernorateSerializer
     permission_classes = [IsAuthenticated, IsSuperAdmin]
@@ -441,48 +338,18 @@ class GovernorateViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'code', 'id']
     ordering = ['name']
 
-    def perform_create(self, serializer):
-        gov = serializer.save()
-        print(f"[GOVERNORATE CREATED] {self.request.user.username} created governorate: {gov.name} ({gov.code})")
-
-    def perform_update(self, serializer):
-        gov = serializer.save()
-        print(f"[GOVERNORATE UPDATED] {self.request.user.username} updated governorate: {gov.name} ({gov.code})")
-
     def perform_destroy(self, instance):
-        from rest_framework import serializers as drf_serializers
-
         cities_count = instance.cities.count()
         if cities_count > 0:
-            raise drf_serializers.ValidationError({
-                "detail": (
-                    f"Impossible de supprimer le gouvernorat '{instance.name}' : "
-                    f"{cities_count} ville(s) sont rattachée(s). "
-                    f"Supprimez ou réaffectez les villes d'abord."
-                )
+            raise ValidationError({
+                "detail": f"Impossible de supprimer le gouvernorat '{instance.name}' : {cities_count} ville(s) sont rattachées."
             })
-
-        print(f"[GOVERNORATE DELETED] {self.request.user.username} deleted governorate: {instance.name} ({instance.code})")
         instance.delete()
 
-# ─── ViewSet MedicalSpecialty ────────────────────────────────────────────
+
+# ====================== MEDICAL SPECIALTY ======================
 
 class MedicalSpecialtyViewSet(viewsets.ModelViewSet):
-    """
-    CRUD complet des spécialités médicales — Réservé Super Admin.
-
-    Endpoints :
-        GET    /api/users/specialties/           → Lister (recherche + tri)
-        POST   /api/users/specialties/           → Créer
-        GET    /api/users/specialties/<id>/      → Détail
-        PATCH  /api/users/specialties/<id>/      → Modifier
-        DELETE /api/users/specialties/<id>/      → Supprimer
-
-    Query params :
-        ?search=cardio         → Recherche nom/code
-        ?ordering=name         → Tri
-        ?page=1&page_size=20   → Pagination
-    """
     permission_classes = [IsAuthenticated, IsSuperAdmin]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'code', 'description']
@@ -501,37 +368,12 @@ class MedicalSpecialtyViewSet(viewsets.ModelViewSet):
         return MedicalSpecialtyListSerializer
 
     def perform_destroy(self, instance):
-        """
-        Protection : empêcher la suppression si des cabinets ou médecins
-        sont liés à cette spécialité.
-        """
         cabinets_count = instance.cabinets.count()
         doctors_count = instance.doctors.count()
 
         if cabinets_count > 0 or doctors_count > 0:
             raise ValidationError({
-                'detail': (
-                    f"Impossible de supprimer la spécialité '{instance.name}' : "
-                    f"{cabinets_count} cabinet(s) et {doctors_count} médecin(s) y sont liés."
-                )
+                'detail': f"Impossible de supprimer la spécialité '{instance.name}' : {cabinets_count} cabinet(s) et {doctors_count} médecin(s) y sont liés."
             })
 
         instance.delete()
-
-    @action(detail=False, methods=['get'])
-    def stats(self, request):
-        """Statistiques sur les spécialités médicales."""
-        total = MedicalSpecialty.objects.count()
-        with_cabinets = MedicalSpecialty.objects.filter(
-            cabinets__isnull=False
-        ).distinct().count()
-        with_doctors = MedicalSpecialty.objects.filter(
-            doctors__isnull=False
-        ).distinct().count()
-
-        return Response({
-            'total': total,
-            'with_cabinets': with_cabinets,
-            'with_doctors': with_doctors,
-            'unused': total - with_cabinets,
-        })

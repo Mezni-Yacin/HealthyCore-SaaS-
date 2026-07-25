@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+
 // Super admin
 import UsersManagement from './pages/Super_admin/UsersManagement';
 import GovernoratesManagement from './pages/Super_admin/GovernoratesManagement';
@@ -18,6 +19,7 @@ import DoctorsManagement from './pages/Super_admin/DoctorsManagement';
 import PlansManagement from './pages/Super_admin/PlansManagement';
 import SpecialtiesManagement from './pages/Super_admin/SpecialtiesManagement';
 import SubscriptionsManagement from './pages/Super_admin/SubscriptionsManagement';
+
 // Doctor
 import DoctorMedicalRecords from './pages/Doctor/DoctorMedicalRecords';
 import DoctorMedicalRecordDetail from './pages/Doctor/DoctorMedicalRecordDetail';
@@ -25,11 +27,15 @@ import DoctorSchedule from './pages/Doctor/DoctorSchedule';
 import DoctorSecretaries from './pages/Doctor/DoctorSecretaries';
 import DoctorAppointments from './pages/Doctor/DoctorAppointments';
 import DoctorAppointmentDetail from './pages/Doctor/DoctorAppointmentDetail';
+import DoctorLab from './pages/DoctorLab';
+
 // Patient
 import PatientMedicalRecords from './pages/Patient/PatientMedicalRecords';
 import PatientMedicalRecordDetail from './pages/Patient/PatientMedicalRecordDetail';
 import PatientAppointments from './pages/Patient/PatientAppointments';
 import PatientAppointmentDetail from './pages/Patient/PatientAppointmentDetail';
+import PatientLab from './pages/PatientLab';
+
 // Secretary
 import SecretaryMedicalRecords from './pages/Secretary/SecretaryMedicalRecords';
 import SecretaryMedicalRecordDetail from './pages/Secretary/SecretaryMedicalRecordDetail';
@@ -38,16 +44,27 @@ import SecretaryAppointmentDetail from './pages/Secretary/SecretaryAppointmentDe
 import SecretaryCabinets from './pages/Secretary/SecretaryCabinets';
 import SecretaryCabinetEdit from './pages/Secretary/SecretaryCabinetEdit';
 
+// Laboratoire (Lab Staff)
+import LabStaffLab from './pages/LabStaffLab';
+
 // Cabinet
 import CabinetDirectory from './pages/Cabinet/CabinetDirectory';
 import CabinetProfile from './pages/Cabinet/CabinetProfile';
+
 // Chat
 import ChatPage from './pages/Chat/ChatPage';
 import MessagesPage from './pages/Chat/MessagesPage';
 
+import HomePage from './pages/HomePage';
+
 import DoctorWaitingQueue from './pages/DoctorWaitingQueue';
 import PatientWaitingQueue from './pages/PatientWaitingQueue';
 import SecretaryWaitingQueue from './pages/SecretaryWaitingQueue';
+
+import SuperAdminInvoices from './pages/SuperAdminInvoices';
+import DoctorInvoices from './pages/DoctorInvoices';
+import SecretaryInvoices from './pages/SecretaryInvoices';
+import PatientInvoices from './pages/PatientInvoices';
 
 function NotFound() {
   return (
@@ -65,14 +82,14 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Page publique */}
+          {/* Pages publiques */}
+          <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<Login />} />
 
           {/* Pages protégées */}
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               {/* ====================== COMMUN ====================== */}
-              <Route path="/" element={<Dashboard />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
 
@@ -81,11 +98,14 @@ function App() {
 
               {/* ====================== PROFIL CABINET PUBLIC ====================== */}
               <Route path="/cabinet-profile/:id" element={<CabinetProfile />} />
+              
               {/* ====================== PATIENT ====================== */}
               <Route path="/patient-records" element={<PatientMedicalRecords />} />
               <Route path="/patient-records/:id" element={<PatientMedicalRecordDetail />} />
               <Route path="/my-appointments" element={<PatientAppointments />} />
               <Route path="/my-appointments/:id" element={<PatientAppointmentDetail />} />
+              <Route path="/patient-invoices" element={<PatientInvoices />} />
+              <Route path="/patient-lab" element={<PatientLab />} />
 
               {/* ====================== SECRÉTAIRE ====================== */}
               <Route path="/secretary-cabinets" element={<SecretaryCabinets />} />
@@ -94,6 +114,8 @@ function App() {
               <Route path="/secretary-records/:id" element={<SecretaryMedicalRecordDetail />} />
               <Route path="/appointments/secretary" element={<SecretaryAppointments />} />
               <Route path="/appointments/secretary/:id" element={<SecretaryAppointmentDetail />} />
+              <Route path="/secretary-invoices" element={<SecretaryInvoices />} />
+
               {/* ====================== MÉDECIN (propriétaire) ====================== */}
               <Route path="/cabinet-directory" element={<CabinetDirectory />} />
               <Route path="/my-secretaries" element={<DoctorSecretaries />} />
@@ -104,6 +126,11 @@ function App() {
               <Route path="/appointments" element={<DoctorAppointments />} />
               <Route path="/appointments/doctor" element={<DoctorAppointments />} />
               <Route path="/appointments/doctor/:id" element={<DoctorAppointmentDetail />} />
+              <Route path="/doctor-invoices" element={<DoctorInvoices />} />
+              <Route path="/lab-doctor" element={<DoctorLab />} />
+
+              {/* ====================== LABORATOIRE (Lab Staff) ====================== */}
+              <Route path="/lab-staff" element={<LabStaffLab />} />
 
               {/* ====================== FILE D'ATTENTE ====================== */}
               <Route path="/waiting-queue" element={<DoctorWaitingQueue />} />
@@ -119,6 +146,7 @@ function App() {
               <Route path="/governorates" element={<GovernoratesManagement />} />
               <Route path="/plans" element={<PlansManagement />} />
               <Route path="/subscriptions" element={<SubscriptionsManagement />} />
+              <Route path="/invoices-management" element={<SuperAdminInvoices />} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

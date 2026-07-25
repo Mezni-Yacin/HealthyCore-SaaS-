@@ -1,0 +1,228 @@
+.admin-dash {
+  --adm-primary: #6f42c1;
+  --adm-primary-light: #e8dff5;
+  --adm-blue: #4361ee;
+  --adm-blue-light: #e7f1ff;
+  --adm-success: #198754;
+  --adm-success-light: #d1e7dd;
+  --adm-warning: #fd7e14;
+  --adm-warning-light: #fff3e0;
+  --adm-danger: #dc3545;
+  --adm-pink: #f72585;
+  --adm-cyan: #0dcaf0;
+  --adm-dark: #1e293b;
+  --adm-gray: #64748b;
+  --adm-border: #e2e8f0;
+  --adm-radius: 16px;
+  --adm-radius-sm: 10px;
+  --adm-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  --adm-shadow-hover: 0 8px 30px rgba(0,0,0,0.08);
+}
+
+/* ── Welcome ── */
+.adm-welcome {
+  background: linear-gradient(135deg, #6f42c1 0%, #563d9c 50%, #3d2b7a 100%);
+  border-radius: var(--adm-radius);
+  padding: 2rem 2.25rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.adm-welcome::before {
+  content: ''; position: absolute; top: -80px; right: -60px;
+  width: 250px; height: 250px; border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+.adm-welcome::after {
+  content: ''; position: absolute; bottom: -60px; right: 130px;
+  width: 170px; height: 170px; border-radius: 50%;
+  background: rgba(255,255,255,0.03);
+}
+.adm-welcome .pulse-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #c4b5fd; display: inline-block; margin-right: 0.5rem;
+  animation: admPulse 2s infinite;
+}
+@keyframes admPulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:.5; transform:scale(1.3); }
+}
+.adm-welcome h2 { font-weight: 800; font-size: 1.65rem; margin-bottom: 0.3rem; }
+.adm-welcome .welcome-sub { font-size: 0.95rem; opacity: 0.85; margin-bottom: 0; }
+.adm-welcome .welcome-date { font-size: 0.82rem; opacity: 0.6; margin-top: 0.5rem; }
+.adm-welcome .welcome-clock { font-size: 1.1rem; font-weight: 600; opacity: 0.9; font-variant-numeric: tabular-nums; }
+
+/* ── Stat Cards ── */
+.adm-stat-card {
+  border: none; border-radius: var(--adm-radius); overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  height: 100%; box-shadow: var(--adm-shadow); background: #fff; position: relative;
+}
+.adm-stat-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+}
+.adm-stat-card:hover { transform: translateY(-5px); box-shadow: var(--adm-shadow-hover); }
+.adm-stat-card .stat-body { padding: 1.25rem 1.25rem 1rem; }
+.adm-stat-card .stat-icon-ring {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.45rem; color: #fff; flex-shrink: 0;
+}
+.adm-stat-card .stat-value { font-size: 2rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.5px; }
+.adm-stat-card .stat-label {
+  font-size: 0.78rem; color: var(--adm-gray); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.15rem;
+}
+.adm-stat-card .stat-sub { font-size: 0.73rem; color: #94a3b8; margin-top: 0.35rem; }
+.adm-stat-card .stat-trend {
+  font-size: 0.72rem; font-weight: 600; display: inline-flex;
+  align-items: center; gap: 0.2rem; padding: 0.2em 0.5em;
+  border-radius: 6px; margin-top: 0.4rem;
+}
+
+/* ── Panel ── */
+.adm-panel {
+  border: none; border-radius: var(--adm-radius);
+  box-shadow: var(--adm-shadow); background: #fff; overflow: hidden;
+}
+.adm-panel .panel-head {
+  padding: 1rem 1.25rem; border-bottom: 1px solid var(--adm-border);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.adm-panel .panel-head h6 { margin: 0; font-weight: 700; font-size: 0.95rem; color: var(--adm-dark); }
+.adm-panel .panel-body { padding: 1rem 1.25rem; }
+
+/* ── Section Title ── */
+.adm-section-title {
+  font-size: 1rem; font-weight: 700; color: var(--adm-dark);
+  margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.adm-section-title i { font-size: 0.9rem; color: var(--adm-primary); }
+
+/* ── Role Badge ── */
+.adm-role-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.35em 0.7em; border-radius: 8px; font-size: 0.75rem;
+  font-weight: 600; cursor: default; transition: transform 0.15s ease;
+}
+.adm-role-badge:hover { transform: scale(1.03); }
+.adm-role-badge .role-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* ── Table ── */
+.adm-table { margin-bottom: 0; }
+.adm-table th {
+  font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--adm-gray);
+  border-bottom-width: 1px; padding: 0.75rem 1rem; white-space: nowrap;
+}
+.adm-table td { padding: 0.7rem 1rem; vertical-align: middle; font-size: 0.87rem; }
+.adm-table tbody tr:hover { background-color: #f8f9fa; }
+.adm-table .user-avatar {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.8rem; color: #fff; flex-shrink: 0;
+}
+
+/* ── Progress ── */
+.adm-progress-wrap { margin-bottom: 0.85rem; }
+.adm-progress-wrap:last-child { margin-bottom: 0; }
+.adm-progress-label {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;
+}
+.adm-progress-label span:first-child { font-size: 0.82rem; font-weight: 600; color: var(--adm-dark); }
+.adm-progress-label span:last-child { font-size: 0.75rem; color: var(--adm-gray); }
+.adm-progress-bar-wrap { height: 8px; border-radius: 8px; background: #f1f5f9; overflow: hidden; }
+.adm-progress-bar { height: 100%; border-radius: 8px; transition: width 1s ease; }
+
+/* ── Sub / Queue / Cabinet Items ── */
+.adm-item-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.65rem 0; border-bottom: 1px solid #f1f5f9;
+}
+.adm-item-row:last-child { border-bottom: none; padding-bottom: 0; }
+.adm-item-row:first-child { padding-top: 0; }
+
+/* ── Quick Actions ── */
+.adm-quick-action {
+  border-radius: var(--adm-radius-sm); border: 2px solid var(--adm-border);
+  background: #fff; padding: 1.1rem 0.75rem; text-decoration: none;
+  color: var(--adm-dark); transition: all 0.2s ease; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  height: 100%; box-shadow: var(--adm-shadow);
+}
+.adm-quick-action:hover {
+  border-color: var(--adm-primary); background: var(--adm-primary-light);
+  color: var(--adm-primary); transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(111,66,193,0.12); text-decoration: none;
+}
+.adm-quick-action .qa-icon {
+  width: 46px; height: 46px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem; color: #fff; transition: transform 0.2s ease;
+}
+.adm-quick-action:hover .qa-icon { transform: scale(1.08); }
+.adm-quick-action .qa-label { font-size: 0.8rem; font-weight: 600; margin: 0; line-height: 1.3; }
+
+/* ── Badge ── */
+.adm-badge {
+  font-size: 0.68rem; font-weight: 600; padding: 0.25em 0.6em;
+  border-radius: 6px; letter-spacing: 0.2px; display: inline-flex;
+  align-items: center; gap: 0.25rem;
+}
+
+/* ── Tip ── */
+.adm-tip {
+  border-radius: var(--adm-radius-sm);
+  background: linear-gradient(135deg, #e8dff5 0%, #e7f1ff 100%);
+  padding: 1.15rem 1.25rem; border: 1px solid #d0c4ec;
+}
+.adm-tip .tip-icon {
+  width: 36px; height: 36px; border-radius: 10px; background: var(--adm-primary);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.adm-tip .tip-text { font-size: 0.82rem; color: #334155; line-height: 1.55; margin: 0; }
+
+/* ── Empty ── */
+.adm-empty { padding: 2rem 1rem; text-align: center; }
+.adm-empty i { font-size: 2.2rem; color: #cbd5e1; margin-bottom: 0.5rem; display: block; }
+.adm-empty p { font-size: 0.85rem; color: #94a3b8; margin: 0; }
+
+/* ── Skeleton ── */
+.adm-skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%; animation: admShimmer 1.5s infinite; border-radius: 8px;
+}
+@keyframes admShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Scrollbar personnalisée (géographie) ── */
+.admin-dash [style*="overflow-y"]::-webkit-scrollbar { width: 4px; }
+.admin-dash [style*="overflow-y"]::-webkit-scrollbar-track { background: transparent; }
+.admin-dash [style*="overflow-y"]::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.admin-dash [style*="overflow-y"]::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Géo compteurs ── */
+.adm-panel .geo-counter {
+  text-align: center; padding: 0.6rem; border-radius: 12px; flex: 1;
+}
+.adm-panel .geo-counter .geo-val {
+  font-weight: 800; font-size: 1.4rem; line-height: 1.1;
+}
+.adm-panel .geo-counter .geo-label {
+  font-size: 0.7rem; font-weight: 600; color: var(--adm-gray); margin-top: 0.15rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .adm-welcome { padding: 1.5rem; }
+  .adm-welcome h2 { font-size: 1.3rem; }
+  .adm-stat-card .stat-value { font-size: 1.5rem; }
+  .adm-stat-card .stat-icon-ring { width: 44px; height: 44px; font-size: 1.2rem; }
+  .adm-quick-action { padding: 0.85rem 0.5rem; }
+  .adm-quick-action .qa-icon { width: 38px; height: 38px; font-size: 1.05rem; }
+  .adm-quick-action .qa-label { font-size: 0.72rem; }
+}
+@media (max-width: 576px) {
+  .adm-table th, .adm-table td { padding: 0.5rem 0.65rem; font-size: 0.8rem; }
+}

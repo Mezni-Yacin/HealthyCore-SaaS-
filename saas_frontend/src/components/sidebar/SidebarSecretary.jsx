@@ -1,4 +1,3 @@
-// src/components/sidebar/SidebarSecretary.jsx
 import { NavLink } from 'react-router-dom';
 import SidebarBase from './SidebarBase';
 
@@ -85,16 +84,28 @@ export default function SidebarSecretary() {
           Messages
         </NavLink>
       </li>
+
       {/* File d'attente */}
-        <li className="nav-item mt-3">
-          <h6 className="px-3 text-uppercase text-secondary small fw-bold mb-2">File d'attente</h6>
-        </li>
-        <li className="nav-item">
-          <NavLink to="/secretary-queue" className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-primary' : ''}`}>
-            <i className="bi bi-hourglass-split me-2"></i>
-            File d'attente
-          </NavLink>
-        </li>
+      <li className="nav-item mt-3">
+        <h6 className="px-3 text-uppercase text-secondary small fw-bold mb-2">File d'attente</h6>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/secretary-queue" className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-primary' : ''}`}>
+          <i className="bi bi-hourglass-split me-2"></i>
+          File d'attente
+        </NavLink>
+      </li>
+
+      {/* Facturation */}
+      <li className="nav-item mt-3">
+        <h6 className="px-3 text-uppercase text-secondary small fw-bold mb-2">Facturation</h6>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/secretary-invoices" className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-primary' : ''}`}>
+          <i className="bi bi-receipt me-2"></i>
+          Facturation
+        </NavLink>
+      </li>
 
       {/* Mon Compte */}
       <li className="nav-item mt-3">
