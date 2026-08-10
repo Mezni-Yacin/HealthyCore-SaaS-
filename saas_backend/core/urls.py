@@ -16,8 +16,11 @@ urlpatterns = [
     path('api/messaging/', include('apps.messaging.urls')),
     path('api/waiting-queue/', include('apps.waiting_queue.urls')),
     path('api/billing/', include('apps.billing.urls')),
-    path('api/laboratory/', include('apps.laboratories.urls')),
+    path('api/laboratories/', include('apps.laboratories.urls')),
     path('api/ai/', include('apps.ai.urls')),
+    path('api/pharmacy/', include('apps.pharmacy.urls')), 
+
+    
 
 ]
 

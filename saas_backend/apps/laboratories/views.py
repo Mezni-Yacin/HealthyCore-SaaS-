@@ -38,7 +38,6 @@ def _get_patient(request):
         return None
 
 def _get_city_model():
-    """Récupère le modèle City dynamiquement depuis le champ FK du modèle Laboratory"""
     return Laboratory._meta.get_field('city').related_model
 
 def _base_request_qs():
@@ -110,7 +109,6 @@ class LabStaffLabViewSet(viewsets.ViewSet):
     def _get_qs(self, request):
         return _base_request_qs().filter(laboratory=_get_lab_for_staff(request))
 
-    # -- Villes --
     @action(detail=False, methods=['get'], url_path='cities')
     def cities_list(self, request):
         CityModel = _get_city_model()
@@ -118,7 +116,6 @@ class LabStaffLabViewSet(viewsets.ViewSet):
         data = [{'id': c.id, 'name': c.name} for c in cities]
         return Response(data)
 
-    # -- Laboratoire --
     @action(detail=False, methods=['post'], url_path='create-lab')
     def create_my_lab(self, request):
         if Laboratory.objects.filter(Q(owner=request.user) | Q(secretaries=request.user), is_deleted=False).first():
@@ -144,7 +141,6 @@ class LabStaffLabViewSet(viewsets.ViewSet):
         s.is_valid(raise_exception=True)
         return Response(LaboratoryDetailSerializer(s.save()).data)
 
-    # -- Catalogue Tests (CRUD) --
     def tests_list(self, request):
         return Response(LabTestTypeListSerializer(LabTestType.objects.all().order_by('category'), many=True).data)
 
@@ -175,7 +171,6 @@ class LabStaffLabViewSet(viewsets.ViewSet):
             return Response({'detail': 'Introuvable.'}, status=404)
         return Response({'detail': 'Supprimé.'})
 
-    # -- Demandes --
     def requests_list(self, request):
         qs = self._get_qs(request)
         st = request.query_params.get('status')
@@ -211,7 +206,7 @@ class LabStaffLabViewSet(viewsets.ViewSet):
             req.sample_collected_by = request.user
         req.save()
         return Response(LabTestRequestDetailSerializer(req).data)
-       # --- Récupérer un résultat (GET) ---
+
     @action(detail=True, methods=['get'], url_path='result')
     def get_result(self, request, pk=None):
         try:
@@ -225,6 +220,7 @@ class LabStaffLabViewSet(viewsets.ViewSet):
             return Response(LabResultDetailSerializer(res).data)
         except LabResult.DoesNotExist:
             return Response({'detail': 'Résultat non disponible.'}, status=404)
+
     @action(detail=True, methods=['post', 'put'], url_path='results')
     def create_update_results(self, request, pk=None):
         try:
@@ -260,6 +256,24 @@ class LabStaffLabViewSet(viewsets.ViewSet):
         res.validation_date = timezone.now()
         res.save()
         return Response(LabResultDetailSerializer(res).data)
+
+    # ✅ NOUVELLE ACTION : Marquer comme payé
+    @action(detail=True, methods=['post'], url_path='mark-paid')
+    def mark_paid(self, request, pk=None):
+        try:
+            req = self._get_qs(request).get(pk=pk)
+        except LabTestRequest.DoesNotExist:
+            return Response({'detail': 'Introuvable.'}, status=404)
+        
+        payment_method = request.data.get('payment_method')
+        if payment_method not in ['cash', 'card', 'cnam', 'insurance']:
+            return Response({'detail': 'Méthode de paiement invalide.'}, status=400)
+        
+        req.payment_status = 'paid'
+        req.payment_method = payment_method
+        req.save(update_fields=['payment_status', 'payment_method'])
+        
+        return Response(LabTestRequestDetailSerializer(req).data)
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
@@ -325,7 +339,6 @@ class PatientLabViewSet(viewsets.ViewSet):
 class SuperAdminLabViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
-    # -- Labs CRUD --
     def labs_list(self, request):
         return Response(LaboratoryListSerializer(Laboratory.objects.filter(is_deleted=False).select_related('city'), many=True).data)
 
@@ -359,7 +372,6 @@ class SuperAdminLabViewSet(viewsets.ViewSet):
         lab.save()
         return Response({'detail': 'Supprimé.'})
 
-    # -- Tests CRUD --
     def tests_list(self, request):
         return Response(LabTestTypeListSerializer(LabTestType.objects.all().order_by('category'), many=True).data)
 
@@ -390,7 +402,6 @@ class SuperAdminLabViewSet(viewsets.ViewSet):
             return Response({'detail': 'Introuvable.'}, status=404)
         return Response({'detail': 'Supprimé.'})
 
-    # -- Requests --
     def requests_list(self, request):
         qs = _base_request_qs()
         st = request.query_params.get('status')
@@ -414,7 +425,6 @@ class SuperAdminLabViewSet(viewsets.ViewSet):
         req.save()
         return Response({'detail': 'Supprimé.'})
 
-    # -- Results --
     def results_list(self, request):
         return Response(LabResultListSerializer(LabResult.objects.filter(is_deleted=False), many=True).data)
 

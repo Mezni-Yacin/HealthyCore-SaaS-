@@ -1,9 +1,3 @@
-// src/pages/Login.jsx
-// ──────────────────────────────────────────────────────────────
-// Login Page — MedSaaS Pro
-// Bootstrap 5 CDN | useAuth | French UI
-// ──────────────────────────────────────────────────────────────
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -27,7 +21,13 @@ export default function Login() {
       await login({ username, password });
       navigate('/dashboard');
     } catch (err) {
-      setError('Identifiants incorrects. Veuillez vérifier votre nom d\'utilisateur et mot de passe.');
+      // ✅ Gestion de l'erreur "Compte inactif" de Django
+      const detail = err.response?.data?.detail || '';
+      if (detail.includes("No active account")) {
+        setError("Votre compte est en attente de validation par un administrateur, ou vos identifiants sont incorrects.");
+      } else {
+        setError('Identifiants incorrects. Veuillez vérifier votre nom d\'utilisateur et mot de passe.');
+      }
     } finally {
       setLoading(false);
     }
@@ -35,7 +35,6 @@ export default function Login() {
 
   return (
     <div className="lp-wrapper min-vh-100 d-flex align-items-center justify-content-center">
-      {/* ── Background decorations ── */}
       <div className="lp-bg">
         <div className="lp-shape lp-shape-1"></div>
         <div className="lp-shape lp-shape-2"></div>
@@ -46,25 +45,21 @@ export default function Login() {
         <div className="row justify-content-center g-0">
           <div className="col-11 col-sm-9 col-md-7 col-lg-5">
 
-            {/* ── Logo ── */}
             <div className="text-center mb-4">
               <Link to="/" className="lp-logo text-decoration-none d-inline-flex align-items-center gap-2">
                 <i className="bi bi-heart-pulse-fill lp-logo-icon"></i>
-                <span className="lp-logo-text">MedSaaS <span className="lp-logo-pro">Pro</span></span>
+                <span className="lp-logo-text">HealthyCore<span className="lp-logo-pro">.tn</span></span>
               </Link>
             </div>
 
-            {/* ── Card ── */}
             <div className="lp-card card border-0 shadow-lg">
               <div className="card-body p-4 p-md-5">
 
-                {/* Header */}
                 <div className="text-center mb-4">
                   <h1 className="lp-title fw-bold mb-2">Bon retour !</h1>
                   <p className="lp-subtitle text-muted">Connectez-vous à votre espace médical</p>
                 </div>
 
-                {/* Error */}
                 {error && (
                   <div className="lp-error alert d-flex align-items-center gap-2" role="alert">
                     <i className="bi bi-exclamation-triangle-fill"></i>
@@ -72,12 +67,10 @@ export default function Login() {
                   </div>
                 )}
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} noValidate>
-                  {/* Username */}
                   <div className="lp-field mb-3">
                     <label htmlFor="username" className="form-label lp-label fw-medium">
-                      <i className="bi bi-person me-1"></i> Nom d'utilisateur
+                      <i className="bi bi-person me-1"></i> Nom d'utilisateur ou Email
                     </label>
                     <div className="lp-input-wrap">
                       <span className="lp-input-icon"><i className="bi bi-at"></i></span>
@@ -95,7 +88,6 @@ export default function Login() {
                     </div>
                   </div>
 
-                  {/* Password */}
                   <div className="lp-field mb-4">
                     <label htmlFor="password" className="form-label lp-label fw-medium">
                       <i className="bi bi-lock me-1"></i> Mot de passe
@@ -124,7 +116,6 @@ export default function Login() {
                     </div>
                   </div>
 
-                  {/* Submit */}
                   <button type="submit" className="btn lp-btn-submit w-100 mb-3" disabled={loading}>
                     {loading ? (
                       <>
@@ -140,21 +131,18 @@ export default function Login() {
                   </button>
                 </form>
 
-                {/* Divider */}
                 <div className="lp-divider d-flex align-items-center my-4">
                   <span className="flex-grow-1"></span>
                   <span className="px-3 text-muted small">Comptes de test</span>
                   <span className="flex-grow-1"></span>
                 </div>
-                {/* Demo accounts */}
+                
                 <div className="lp-accounts">
                   {[
                     { role: 'Super Admin', user: 'Superadmin', pass: 'Superadmin', icon: 'bi-shield-fill-check', color: '#e74c3c' },
                     { role: 'Médecin', user: 'DR.ahmed', pass: 'Azerty@123', icon: 'bi-heart-pulse-fill', color: '#4f46e5' },
                     { role: 'Patient', user: 'ines.ketata', pass: 'Azerty@123', icon: 'bi-person-fill', color: '#10b981' },
                     { role: 'Secrétaire', user: 'mezni.yacin', pass: 'Azerty@123', icon: 'bi-person-badge-fill', color: '#f59e0b' },
-                    { role: 'lab staff', user: 'taha@gmail.dom', pass: 'Azerty@123', icon: 'bi-person-badge-fill', color: '#f52597' },
-
                   ].map((acc, i) => (
                     <div
                       key={i}
@@ -175,7 +163,6 @@ export default function Login() {
                   ))}
                 </div>
 
-                {/* Footer */}
                 <p className="text-center mt-4 mb-0">
                   <span className="text-muted small">
                     <i className="bi bi-lock-fill me-1"></i>
@@ -185,7 +172,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Bottom link */}
             <p className="text-center mt-4 mb-0">
               <Link to="/" className="lp-back-link text-decoration-none">
                 <i className="bi bi-arrow-left me-1"></i> Retour à l'accueil

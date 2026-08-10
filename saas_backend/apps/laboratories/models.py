@@ -44,6 +44,10 @@ class Laboratory(models.Model):
     timezone = models.CharField(max_length=50, default='Africa/Tunis')
     
     logo = models.ImageField(upload_to='lab_logos/%Y/%m/', blank=True, null=True)
+    banner = models.ImageField(upload_to='lab_banners/%Y/%m/', blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    
     is_active = models.BooleanField(default=True)
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(blank=True, null=True)
@@ -107,6 +111,19 @@ class LabTestRequest(models.Model):
         ('urgent', 'Urgent'),
         ('stat', 'Stat (Immédiat)'),
     )
+
+    # ✅ NOUVEAUX CHOIX DE PAIEMENT
+    PAYMENT_STATUS_CHOICES = (
+        ('unpaid', 'Non Payé'),
+        ('paid', 'Payé'),
+    )
+    PAYMENT_METHOD_CHOICES = (
+        ('cash', 'Espèces'),
+        ('card', 'Carte Bancaire'),
+        ('online', 'Paiement en ligne (Stripe)'),
+        ('cnam', 'CNAM'),
+        ('insurance', 'Assurance'),
+    )
     
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='lab_requests')
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='lab_requests')
@@ -117,6 +134,10 @@ class LabTestRequest(models.Model):
     request_date = models.DateTimeField(auto_now_add=True)
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='normal')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='requested')
+    
+    # ✅ NOUVEAUX CHAMPS DE PAIEMENT
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='unpaid')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True, null=True)
     
     clinical_history = models.TextField(blank=True, null=True)
     diagnosis_suspected = models.CharField(max_length=200, blank=True, null=True)

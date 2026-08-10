@@ -1,4 +1,3 @@
-# apps/laboratories/serializers.py
 from rest_framework import serializers
 from .models import Laboratory, LabTestType, LabTestRequest, LabResult
 
@@ -24,20 +23,34 @@ class LabTestTypeCreateUpdateSerializer(serializers.ModelSerializer):
 
 class LaboratoryListSerializer(serializers.ModelSerializer):
     city_name = serializers.CharField(source='city.name', read_only=True)
+    
     class Meta:
         model = Laboratory
-        fields = ['id', 'name', 'address', 'city', 'city_name', 'phone_number', 'email', 'cnam_affiliated', 'is_active', 'logo']
+        fields = [
+            'id', 'name', 'address', 'city', 'city_name', 'phone_number', 'email', 
+            'cnam_affiliated', 'is_active', 'logo', 'banner', 'latitude', 'longitude',
+            'opening_hours', 'sample_collection_hours', 'accreditation', 'accreditation_number',
+            'website', 'services_offered', 'created_at'
+        ]
 
 class LaboratoryDetailSerializer(LaboratoryListSerializer):
-    specialties = serializers.SerializerMethodField()
+    specialties_info = serializers.SerializerMethodField()
+    owner_name = serializers.SerializerMethodField()
+
     class Meta(LaboratoryListSerializer.Meta):
         fields = LaboratoryListSerializer.Meta.fields + [
-            'owner', 'secretaries', 'website', 'accreditation', 'accreditation_number',
-            'cnam_code', 'services_offered', 'specialties', 'opening_hours',
+            'owner', 'owner_name', 'secretaries', 'website', 'accreditation', 'accreditation_number',
+            'cnam_code', 'services_offered', 'specialties_info', 'opening_hours',
             'sample_collection_hours', 'timezone', 'created_at'
         ]
-    def get_specialties(self, obj):
-        return list(obj.specialties.values_list('id', flat=True))
+
+    def get_specialties_info(self, obj):
+        return [{'id': s.id, 'name': s.name} for s in obj.specialties.all()]
+
+    def get_owner_name(self, obj):
+        if obj.owner:
+            return obj.owner.get_full_name() or obj.owner.username
+        return None
 
 class LaboratoryCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,7 +59,7 @@ class LaboratoryCreateUpdateSerializer(serializers.ModelSerializer):
             'name', 'address', 'city', 'phone_number', 'email', 'website',
             'accreditation', 'accreditation_number', 'cnam_affiliated', 'cnam_code',
             'services_offered', 'specialties', 'opening_hours', 'sample_collection_hours',
-            'timezone', 'logo', 'is_active'
+            'timezone', 'logo', 'banner', 'latitude', 'longitude', 'is_active'
         ]
 
 
@@ -61,10 +74,18 @@ class LabTestRequestListSerializer(serializers.ModelSerializer):
     test_names = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
     has_result = serializers.SerializerMethodField()
+    
+    # ✅ NOUVEAUX CHAMPS PAIEMENT
+    payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
+    payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
 
     class Meta:
         model = LabTestRequest
-        fields = ['id', 'patient_name', 'doctor_name', 'lab_name', 'test_names', 'request_date', 'priority', 'priority_display', 'status', 'status_display', 'total_price', 'has_result']
+        fields = [
+            'id', 'patient_name', 'doctor_name', 'lab_name', 'test_names', 'request_date', 
+            'priority', 'priority_display', 'status', 'status_display', 'total_price', 'has_result',
+            'payment_status', 'payment_status_display', 'payment_method', 'payment_method_display'
+        ]
 
     def get_patient_name(self, obj):
         u = obj.patient.user

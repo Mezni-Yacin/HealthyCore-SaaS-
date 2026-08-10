@@ -135,6 +135,8 @@ class Invoice(models.Model):
         return f"Facture {self.invoice_number} - {self.patient}"
 
 
+# apps/billing/models.py
+
 class Payment(models.Model):
     STATUS_CHOICES = (
         ('pending', 'En Attente'),
@@ -155,6 +157,11 @@ class Payment(models.Model):
     payment_date = models.DateTimeField(auto_now_add=True)
 
     cnam_transaction_number = models.CharField(max_length=50, blank=True, null=True)
+    
+    # ✅ NOUVEAUX CHAMPS STRIPE
+    stripe_payment_intent_id = models.CharField(max_length=200, blank=True, null=True, db_index=True)
+    stripe_checkout_session_id = models.CharField(max_length=200, blank=True, null=True, db_index=True)
+    stripe_customer_email = models.EmailField(blank=True, null=True)
 
     class Meta:
         verbose_name = _("Paiement")

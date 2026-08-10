@@ -12,7 +12,7 @@ load_dotenv()
 # ═══════════════════════════════════════════════════════════════
 # 🔑 CONFIGURATION IA - COLLE TA VRAIE CLE MISTRAL ICI ⬇️
 # ═══════════════════════════════════════════════════════════════
-MISTRAL_API_KEY = "q5N7ryHSnkpL2Sjr65GLcHeRdqDM8U4W"
+MISTRAL_API_KEY = "WQPjvxcp62tut8ZpVimP3JvHiCVEq5h4"
 # ═══════════════════════════════════════════════════════════════
 
 
@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     'apps.audit_notifications',
     'apps.messaging',
     'apps.waiting_queue',
-    'apps.ai',  # <-- Application IA ajoutée
+    'apps.ai',  
+    'apps.pharmacy',
 ]
 
 MIDDLEWARE = [
@@ -159,3 +160,32 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
 }
+
+# Ajouter à la fin de ton settings.py
+
+# ====================== STRIPE CONFIG ======================
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', 'sk_test_votre_cle_test')
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', 'pk_test_votre_cle_test')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', 'whsec_votre_secret')
+
+# URLs de redirection après paiement (à adapter selon ton frontend)
+STRIPE_SUCCESS_URL = os.getenv('STRIPE_SUCCESS_URL', 'http://localhost:5173/invoices')
+STRIPE_CANCEL_URL = os.getenv('STRIPE_CANCEL_URL', 'http://localhost:5173/invoices')
+
+# Devise pour la Tunisie (Stripe utilise "tnr" pour le Dinar)
+STRIPE_CURRENCY = 'eur'  # ou 'eur' si tu veux tester avec une devise supportée
+
+# ====================== EMAIL CONFIG ======================
+
+# Option 1 : Pour le développement (affiche les emails dans le terminal Django)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'HealthyCore_saas@healthycore.tn'
+
+# Option 2 : Pour la production (Exemple avec Gmail - à décommenter en prod)
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'ton.email@gmail.com'
+# EMAIL_HOST_PASSWORD = 'ton_mot_de_passe_application' # Utilise un mot de passe d'application Gmail
+# DEFAULT_FROM_EMAIL = 'ton.email@gmail.com'

@@ -44,6 +44,12 @@ export default function SidebarPatient() {
           <i className="bi bi-calendar-event me-2"></i>Mes rendez-vous
         </NavLink>
       </li>
+     <li className="nav-item">
+        <NavLink to="/patient-pharmacy" className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-primary' : ''}`}>
+          <i className="bi bi-calendar-event me-2"></i>Ma Pharmacie
+        </NavLink>
+      </li>
+      
 
       {/* Laboratoire */}
       <li className="nav-item mt-3">

@@ -49,6 +49,16 @@ export default function SidebarDoctor() {
           <i className="bi bi-folder2-open me-2"></i>Dossiers médicaux
         </NavLink>
       </li>
+        {/* Ordonnances*/}
+      <li className="nav-item mt-3">
+        <h6 className="px-3 text-uppercase text-secondary small fw-bold mb-2">Ordonnances</h6>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/doctor-prescriptions" className={({ isActive }) => `nav-link text-white ${isActive ? 'active bg-primary' : ''}`}>
+          <i className="bi bi-folder2-open me-2"></i>Ordonnances
+        </NavLink>
+      </li>
+
 
       {/* Rendez-vous */}
       <li className="nav-item mt-3">

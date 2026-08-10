@@ -1,6 +1,6 @@
 # apps/users/views.py
 from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import viewsets, status, filters
 from rest_framework.pagination import PageNumberPagination
@@ -8,6 +8,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
+from django.conf import settings
 
 from .models import User, Patient, UserDocument, Subscription, SubscriptionPlan, City, Governorate, MedicalSpecialty
 from .serializers import (
@@ -55,10 +57,10 @@ def user_profile(request):
         return Response(serializer.data)
 
     # PATCH
-    forbidden_fields = {'role', 'username', 'email', 'is_verified', 'two_factor_enabled'}
+    forbidden_fields = {'role', 'username', 'is_verified', 'two_factor_enabled'}
     if any(field in request.data for field in forbidden_fields):
         return Response(
-            {"detail": "Modification interdite sur les champs sensibles (role, email, username, etc)."},
+            {"detail": "Modification interdite sur les champs sensibles (role, username, etc)."},
             status=403
         )
 
@@ -122,6 +124,50 @@ def delete_document(request, pk):
         return Response({"detail": "Document non trouvé ou non autorisé."}, status=404)
 
 
+# ====================== INSCRIPTION PUBLIQUE ======================
+
+@api_view(['POST'])
+@permission_classes([AllowAny]) 
+def public_register(request):
+    data = request.data.copy()
+    data['username'] = data.get('email') 
+    
+    serializer = UserCreateSerializer(data=data)
+    if serializer.is_valid():
+        user = serializer.save(is_active=False)
+        
+        if user.role == 'patient':
+            Patient.objects.create(
+                user=user,
+                date_of_birth=data.get('date_of_birth'),
+                gender=data.get('gender', 'U'),
+                blood_type=data.get('blood_type'),
+                height=data.get('height'),
+                weight=data.get('weight'),
+                allergies=data.get('allergies')
+            )
+            
+        elif user.role == 'doctor':
+            from apps.cabinets.models import Doctor, MedicalSpecialty
+            try:
+                specialty = MedicalSpecialty.objects.get(id=data.get('specialty'))
+            except MedicalSpecialty.DoesNotExist:
+                specialty = None
+                
+            Doctor.objects.create(
+                user=user,
+                specialty=specialty,
+                license_number=data.get('license_number', 'N/A'),
+                years_experience=data.get('years_experience', 0)
+            )
+            
+        return Response(
+            {"detail": "Votre compte a été créé avec succès. Il est en attente de validation par un administrateur."}, 
+            status=201
+        )
+    return Response(serializer.errors, status=400)
+
+
 # ====================== USER MANAGEMENT VIEWSET (SUPER ADMIN) ======================
 
 class UserManagementViewSet(viewsets.ModelViewSet):
@@ -175,9 +221,27 @@ class UserManagementViewSet(viewsets.ModelViewSet):
                 "detail": "Impossible de supprimer un utilisateur avec un abonnement actif."
             })
         
+        user_email = instance.email
+        user_name = instance.first_name or instance.username
+        
         instance.delete()
+        
+        # ✅ ENVOI EMAIL DE REFUS
+        if user_email:
+            try:
+                send_mail(
+                    'Mise à jour de votre demande d\'inscription ❌',
+                    f'Bonjour {user_name},\n\n'
+                    f'Nous regrettons de vous informer que votre demande d\'inscription sur HealthyCore.tn n\'a pas pu aboutir.\n\n'
+                    f'Pour plus d\'informations, veuillez contacter notre support.\n\n'
+                    f'Cordialement,\nL\'équipe HealthyCore.tn',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user_email],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                print(f"Erreur envoi email: {e}")
 
-    # Actions personnalisées
     @action(detail=True, methods=['post'])
     def reset_password(self, request, pk=None):
         user = self.get_object()
@@ -198,6 +262,24 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         user.is_active = True
         user.save()
+        
+        # ✅ ENVOI EMAIL D'ACCEPTATION
+        if user.email:
+            try:
+                send_mail(
+                    'Votre compte HealthyCore.tn a été approuvé ✅',
+                    f'Bonjour {user.first_name or user.username},\n\n'
+                    f'Nous avons le plaisir de vous informer que votre demande d\'inscription sur HealthyCore.tn a été acceptée.\n\n'
+                    f'Votre compte est désormais actif. Vous pouvez vous connecter à votre espace en utilisant vos identifiants.\n\n'
+                    f'Lien de connexion : http://localhost:5173/login\n\n'
+                    f'Cordialement,\nL\'équipe HealthyCore.tn',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                print(f"Erreur envoi email: {e}")
+                
         return Response({"detail": f"Utilisateur {user.username} activé."})
 
     @action(detail=True, methods=['post'])
@@ -221,7 +303,6 @@ class UserManagementViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        """Statistiques utilisateurs"""
         total = User.objects.count()
         active = User.objects.filter(is_active=True).count()
         verified = User.objects.filter(is_verified=True).count()
@@ -291,12 +372,17 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
 class CityViewSet(viewsets.ModelViewSet):
     queryset = City.objects.select_related('governorate').all()
-    permission_classes = [IsAuthenticated, IsSuperAdmin]
     pagination_class = CityPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'postal_code', 'governorate__name']
     ordering_fields = ['name', 'postal_code', 'governorate__name', 'id']
     ordering = ['name']
+
+    # ✅ Autoriser tout le monde (AllowAny) à LIRE les villes
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAuthenticated(), IsSuperAdmin()]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -350,7 +436,12 @@ class GovernorateViewSet(viewsets.ModelViewSet):
 # ====================== MEDICAL SPECIALTY ======================
 
 class MedicalSpecialtyViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    # ✅ Autoriser tout le monde (AllowAny) à LIRE les spécialités
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAuthenticated(), IsSuperAdmin()]
+        
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'code', 'description']
     ordering_fields = ['name', 'code']

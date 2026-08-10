@@ -1,6 +1,9 @@
 from mistralai import Mistral
 from django.conf import settings
 
+# ══════════════════════════════════════════════════════
+# FONCTION 1 : EXPLICATION DES RÉSULTATS (Déjà existant)
+# ══════════════════════════════════════════════════════
 def explain_lab_results(result_data_dict):
     """
     Prend les données brutes d'un résultat, les anonymise,
@@ -8,7 +11,6 @@ def explain_lab_results(result_data_dict):
     """
     client = Mistral(api_key=settings.MISTRAL_API_KEY)
 
-    # ════════════════ 1. ANONYMISATION DES DONNÉES ════════════════
     safe_data = {
         "resultats": result_data_dict.get("results", {}),
         "conclusion_biologiste": result_data_dict.get("conclusion", ""),
@@ -17,7 +19,6 @@ def explain_lab_results(result_data_dict):
         "urgent": result_data_dict.get("critical_finding", False)
     }
 
-    # ════════════════ 2. PROMPTING ════════════════
     system_prompt = """
     Tu es un assistant médical virtuel bienveillant, clair et pédagogue. 
     Ton rôle est d'expliquer les résultats de laboratoire d'un patient de manière simple, sans jargon médical complexe.
@@ -38,7 +39,6 @@ def explain_lab_results(result_data_dict):
     """
 
     try:
-        # ════════════════ 3. APPEL À L'API MISTRAL ════════════════
         response = client.chat.complete(
             model="mistral-small-latest",
             messages=[
@@ -58,3 +58,62 @@ def explain_lab_results(result_data_dict):
             raise Exception("Trop de requêtes IA. Veuillez réessayer dans quelques secondes.")
         else:
             raise Exception(f"Erreur lors de la communication avec l'IA : {error_msg}")
+
+
+# ══════════════════════════════════════════════════════
+# FONCTION 2 : CHATBOT GÉNÉRAL (Nouveau)
+# ══════════════════════════════════════════════════════
+def get_chat_response(user, user_message):
+    client = Mistral(api_key=settings.MISTRAL_API_KEY)
+
+    # 1. Récupérer les 10 derniers messages pour la mémoire
+    from .models import ChatMessage
+    history = list(ChatMessage.objects.filter(user=user).order_by('-created_at')[:10][::-1])
+
+    messages = []
+    
+    # 2. Prompt système dynamique selon le rôle de l'utilisateur
+    role = getattr(user, 'role', None) 
+    user_role_name = "un utilisateur"
+    
+    if role == 'patient':
+        user_role_name = "un patient"
+        system_prompt = """
+        Tu es l'assistant virtuel bienveillant d'une application médicale SaaS. Tu parles à un patient.
+        RÈGLES :
+        1. Réponds de manière simple, empathique et rassurante.
+        2. NE POSE JAMAIS DE DIAGNOSTIC.
+        3. Si le patient décrit des symptômes graves (douleurs poitrine, difficultés respirer), dis-lui d'appeler le 15 ou d'aller aux urgences.
+        4. Réponds en français, de façon concise (2-3 phrases max).
+        """
+    elif role == 'doctor' or role == 'laboratory_staff':
+        user_role_name = "un professionnel de santé"
+        system_prompt = """
+        Tu es l'assistant virtuel d'une application médicale SaaS. Tu parles à un médecin ou du personnel de labo.
+        RÈGLES :
+        1. Sois concis, précis et professionnel.
+        2. Aide à l'organisation, la rédaction ou les infos médicales générales.
+        3. Réponds en français, de façon concise.
+        """
+    else:
+        system_prompt = "Tu es l'assistant utile d'une application médicale. Réponds en français de manière concise."
+
+    messages.append({"role": "system", "content": system_prompt})
+
+    # 3. Ajouter l'historique
+    for msg in history:
+        messages.append({"role": msg.role, "content": msg.content})
+
+    # 4. Ajouter le nouveau message
+    messages.append({"role": "user", "content": user_message})
+
+    try:
+        response = client.chat.complete(
+            model="mistral-small-latest",
+            messages=messages,
+            temperature=0.5,
+            max_tokens=150 
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        raise Exception(f"Erreur IA Chat : {str(e)}")

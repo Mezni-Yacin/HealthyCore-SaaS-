@@ -19,7 +19,9 @@ import DoctorsManagement from './pages/Super_admin/DoctorsManagement';
 import PlansManagement from './pages/Super_admin/PlansManagement';
 import SpecialtiesManagement from './pages/Super_admin/SpecialtiesManagement';
 import SubscriptionsManagement from './pages/Super_admin/SubscriptionsManagement';
-
+import SuperAdminLabs from './pages/Super_admin/SuperAdminLabs';
+import SuperAdminLabTests from './pages/Super_admin/SuperAdminLabTests';
+import SuperAdminLabRequests from './pages/Super_admin/SuperAdminLabRequests';
 // Doctor
 import DoctorMedicalRecords from './pages/Doctor/DoctorMedicalRecords';
 import DoctorMedicalRecordDetail from './pages/Doctor/DoctorMedicalRecordDetail';
@@ -28,6 +30,7 @@ import DoctorSecretaries from './pages/Doctor/DoctorSecretaries';
 import DoctorAppointments from './pages/Doctor/DoctorAppointments';
 import DoctorAppointmentDetail from './pages/Doctor/DoctorAppointmentDetail';
 import DoctorLab from './pages/DoctorLab';
+import DoctorPrescriptions from './pages/Doctor/DoctorPrescriptions';
 
 // Patient
 import PatientMedicalRecords from './pages/Patient/PatientMedicalRecords';
@@ -35,7 +38,7 @@ import PatientMedicalRecordDetail from './pages/Patient/PatientMedicalRecordDeta
 import PatientAppointments from './pages/Patient/PatientAppointments';
 import PatientAppointmentDetail from './pages/Patient/PatientAppointmentDetail';
 import PatientLab from './pages/PatientLab';
-
+import PatientPharmacy from './pages/Patient/PatientPharmacy';
 // Secretary
 import SecretaryMedicalRecords from './pages/Secretary/SecretaryMedicalRecords';
 import SecretaryMedicalRecordDetail from './pages/Secretary/SecretaryMedicalRecordDetail';
@@ -46,7 +49,7 @@ import SecretaryCabinetEdit from './pages/Secretary/SecretaryCabinetEdit';
 
 // Laboratoire (Lab Staff)
 import LabStaffLab from './pages/LabStaffLab';
-
+import LabProfile from './pages/LabProfile'; 
 // Cabinet
 import CabinetDirectory from './pages/Cabinet/CabinetDirectory';
 import CabinetProfile from './pages/Cabinet/CabinetProfile';
@@ -54,6 +57,16 @@ import CabinetProfile from './pages/Cabinet/CabinetProfile';
 // Chat
 import ChatPage from './pages/Chat/ChatPage';
 import MessagesPage from './pages/Chat/MessagesPage';
+
+// Pharmacien
+import PharmacistPOS from './pages/Pharmacy/PharmacistPOS';
+import PharmacistStock from './pages/Pharmacy/PharmacistStock';
+import PharmacistPrescriptions from './pages/Pharmacy/PharmacistPrescriptions';
+import PharmacistSales from './pages/Pharmacy/PharmacistSales';
+import PharmacyProfile from './pages/Pharmacy/PharmacyProfile';
+// Chatbot IA
+import MedicalChatbot from './components/MedicalChatbot'; 
+import PublicPharmacyProfile from './pages/Cabinet/PublicPharmacyProfile';
 
 import HomePage from './pages/HomePage';
 
@@ -65,6 +78,9 @@ import SuperAdminInvoices from './pages/SuperAdminInvoices';
 import DoctorInvoices from './pages/DoctorInvoices';
 import SecretaryInvoices from './pages/SecretaryInvoices';
 import PatientInvoices from './pages/PatientInvoices';
+import Register from './pages/Register';
+import AccountRequests from './pages/Super_admin/AccountRequests';
+
 
 function NotFound() {
   return (
@@ -85,6 +101,8 @@ function App() {
           {/* Pages publiques */}
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<Login />} />
+                        <Route path="/register/:role" element={<Register />} />
+
 
           {/* Pages protégées */}
           <Route element={<ProtectedRoute />}>
@@ -94,10 +112,12 @@ function App() {
               <Route path="/profile" element={<Profile />} />
 
               <Route path="/chat/:cabinetId" element={<ChatPage />} />
+                            <Route path="/pharmacy-profile/:id" element={<PublicPharmacyProfile />} /> {/* ✅ AJOUT ICI */}
               <Route path="/messages" element={<MessagesPage />} />
 
               {/* ====================== PROFIL CABINET PUBLIC ====================== */}
               <Route path="/cabinet-profile/:id" element={<CabinetProfile />} />
+              <Route path="/lab-profile/:id" element={<LabProfile />} />
               
               {/* ====================== PATIENT ====================== */}
               <Route path="/patient-records" element={<PatientMedicalRecords />} />
@@ -106,6 +126,7 @@ function App() {
               <Route path="/my-appointments/:id" element={<PatientAppointmentDetail />} />
               <Route path="/patient-invoices" element={<PatientInvoices />} />
               <Route path="/patient-lab" element={<PatientLab />} />
+              <Route path="/patient-pharmacy" element={<PatientPharmacy />} />
 
               {/* ====================== SECRÉTAIRE ====================== */}
               <Route path="/secretary-cabinets" element={<SecretaryCabinets />} />
@@ -128,9 +149,17 @@ function App() {
               <Route path="/appointments/doctor/:id" element={<DoctorAppointmentDetail />} />
               <Route path="/doctor-invoices" element={<DoctorInvoices />} />
               <Route path="/lab-doctor" element={<DoctorLab />} />
+              <Route path="/doctor-prescriptions" element={<DoctorPrescriptions />} />
 
               {/* ====================== LABORATOIRE (Lab Staff) ====================== */}
               <Route path="/lab-staff" element={<LabStaffLab />} />
+
+            {/* ====================== PHARMACIEN ====================== */}
+            <Route path="/pharmacy-pos" element={<PharmacistPOS />} />
+            <Route path="/pharmacy-stock" element={<PharmacistStock />} />
+            <Route path="/pharmacy-prescriptions" element={<PharmacistPrescriptions />} />
+            <Route path="/pharmacy-sales" element={<PharmacistSales />} />
+            <Route path="/pharmacy-profile" element={<PharmacyProfile />} />
 
               {/* ====================== FILE D'ATTENTE ====================== */}
               <Route path="/waiting-queue" element={<DoctorWaitingQueue />} />
@@ -147,6 +176,11 @@ function App() {
               <Route path="/plans" element={<PlansManagement />} />
               <Route path="/subscriptions" element={<SubscriptionsManagement />} />
               <Route path="/invoices-management" element={<SuperAdminInvoices />} />
+              <Route path="/admin-labs" element={<SuperAdminLabs />} />
+              <Route path="/admin-lab-tests" element={<SuperAdminLabTests />} />
+                            <Route path="/account-requests" element={<AccountRequests />} /> 
+
+              <Route path="/admin-lab-requests" element={<SuperAdminLabRequests />} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
@@ -157,6 +191,12 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
+
+      {/* ====================== WIDGET CHATBOT IA ====================== */}
+      <div className="position-fixed bottom-0 end-0 p-3" style={{ width: '350px', zIndex: 1050 }}>
+        <MedicalChatbot />
+      </div>
+
     </AuthProvider>
   );
 }

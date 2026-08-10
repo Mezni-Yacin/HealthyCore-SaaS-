@@ -5,8 +5,12 @@ from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.laboratories.models import LabTestRequest, LabResult
 from apps.users.models import Patient
-from .services import explain_lab_results
+from .services import explain_lab_results, get_chat_response
+from .models import ChatMessage
 
+# ══════════════════════════════════════════════════════
+# VUE 1 : EXPLICATION DES RÉSULTATS (Déjà existant)
+# ══════════════════════════════════════════════════════
 class ExplainPatientResultsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -15,13 +19,11 @@ class ExplainPatientResultsView(APIView):
         if not request_id:
             return Response({'error': 'request_id est requis.'}, status=400)
 
-        # 1. Récupérer le profil patient
         try:
             patient = Patient.objects.get(user=request.user)
         except Patient.DoesNotExist:
             raise PermissionDenied("Profil patient introuvable.")
 
-        # 2. Récupérer la demande de labo ET vérifier qu'elle appartient à CE patient
         try:
             lab_request = LabTestRequest.objects.select_related('result').get(
                 id=request_id, 
@@ -31,7 +33,6 @@ class ExplainPatientResultsView(APIView):
         except LabTestRequest.DoesNotExist:
             raise NotFound("Demande introuvable ou non autorisée.")
 
-        # 3. Vérifier qu'il y a bien un résultat
         try:
             result = lab_request.result
             if result.is_deleted:
@@ -39,17 +40,10 @@ class ExplainPatientResultsView(APIView):
         except LabResult.DoesNotExist:
             raise NotFound("Les résultats ne sont pas encore disponibles.")
 
-        # 4. Préparer les données
         from apps.laboratories.serializers import LabResultDetailSerializer
         result_data = LabResultDetailSerializer(result).data
 
-        # 5. Appeler le service IA
         try:
-            # === LIGNE DE DEBUG POUR VOIR LA CLE DANS LE TERMINAL ===
-            from django.conf import settings
-            print(f"🔍 DEBUG CLE MISTRAL : '{settings.MISTRAL_API_KEY}'")
-            # ========================================================
-            
             explanation = explain_lab_results(result_data)
             return Response({
                 'success': True,
@@ -62,3 +56,46 @@ class ExplainPatientResultsView(APIView):
                 'success': False,
                 'error': str(e)
             }, status=500)
+
+
+# ══════════════════════════════════════════════════════
+# VUE 2 : CHATBOT GÉNÉRAL (Nouveau)
+# ══════════════════════════════════════════════════════
+class ChatbotView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Récupérer l'historique du chat"""
+        messages = ChatMessage.objects.filter(user=request.user).order_by('created_at')[:50]
+        data = [{
+            "id": m.id,
+            "role": m.role,
+            "content": m.content,
+            "time": m.created_at.strftime("%H:%M")
+        } for m in messages]
+        return Response(data)
+
+    def post(self, request):
+        """Envoyer un message et recevoir la réponse"""
+        user_message = request.data.get('message', '').strip()
+        if not user_message:
+            return Response({'error': 'Le message est vide.'}, status=400)
+
+        # 1. Sauvegarder le message du user
+        ChatMessage.objects.create(user=request.user, role='user', content=user_message)
+
+        try:
+            # 2. Appeler l'IA
+            ai_response = get_chat_response(request.user, user_message)
+
+            # 3. Sauvegarder la réponse de l'IA
+            ai_msg = ChatMessage.objects.create(user=request.user, role='assistant', content=ai_response)
+
+            return Response({
+                "id": ai_msg.id,
+                "role": "assistant",
+                "content": ai_response,
+                "time": ai_msg.created_at.strftime("%H:%M")
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)

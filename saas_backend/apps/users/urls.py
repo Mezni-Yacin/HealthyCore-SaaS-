@@ -16,11 +16,11 @@ from .views import (
     CityViewSet,
     GovernorateViewSet,
     MedicalSpecialtyViewSet,
+    public_register, # ✅ IMPORT AJOUTÉ ICI
 )
 
 router = DefaultRouter()
-# === CORRECTION ICI ===
-router.register(r'user-management', UserManagementViewSet, basename='user-management')
+router.register(r'manage', UserManagementViewSet, basename='user-management')
 router.register(r'subscription-plans', SubscriptionPlanViewSet, basename='subscription-plan')
 router.register(r'subscriptions', SubscriptionViewSet, basename='subscription')
 router.register(r'cities', CityViewSet, basename='city')
@@ -40,6 +40,9 @@ urlpatterns = [
     # Documents
     path('documents/', upload_document, name='upload_document'),
     path('documents/<int:pk>/', delete_document, name='delete_document'),
+    
+    # ✅ ROUTE D'INSCRIPTION PUBLIQUE
+    path('register/', public_register, name='public_register'),
     
     # ViewSets
     path('', include(router.urls)),

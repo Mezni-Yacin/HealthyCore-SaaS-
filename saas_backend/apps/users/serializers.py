@@ -402,6 +402,9 @@ class UserDetailSerializer(serializers.ModelSerializer):
     documents_count = serializers.SerializerMethodField()
     profile_picture_url = serializers.SerializerMethodField()
 
+    # ✅ AJOUT : Méthode pour récupérer le profil médecin
+    doctor_profile = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -410,7 +413,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             'profile_picture', 'profile_picture_url',
             'language_preference', 'is_active', 'is_verified', 'is_staff',
             'two_factor_enabled', 'created_at', 'updated_at',
-            'patient_profile', 'subscription', 'documents_count'
+            'patient_profile', 'doctor_profile', 'subscription', 'documents_count' # ✅ AJOUTé doctor_profile ici
         ]
 
     def get_full_name(self, obj):
@@ -421,6 +424,19 @@ class UserDetailSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             return request.build_absolute_uri(obj.profile_picture.url) if request else obj.profile_picture.url
         return None
+
+    # ✅ AJOUT : Implémentation de la méthode pour le médecin
+    def get_doctor_profile(self, obj):
+        if obj.role == 'doctor' and hasattr(obj, 'doctor_profile'):
+            doc = obj.doctor_profile
+            return {
+                'specialty_name': doc.specialty.name if doc.specialty else None,
+                'license_number': doc.license_number,
+                'years_experience': doc.years_experience,
+                'consultation_price': str(doc.consultation_price)
+            }
+        return None
+
 
     def get_subscription(self, obj):
         try:
