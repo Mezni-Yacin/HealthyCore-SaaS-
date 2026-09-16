@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Pharmacy, Medication, PharmacyStock, Prescription, PrescriptionItem, Dispensation, DispensationItem
+from .models import Pharmacy, Medication, PharmacyStock, Prescription, PrescriptionItem, Dispensation, DispensationItem, Order, OrderItem
 from django.utils import timezone
 
 # ══════════════════ Médicaments & Stock ══════════════════
@@ -113,13 +113,14 @@ class DispensationSerializer(serializers.ModelSerializer):
     items = DispensationItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
     pharmacist_name = serializers.SerializerMethodField()
+    pharmacy_name = serializers.CharField(source='pharmacy.name', read_only=True) # 👈 AJOUTE CETTE LIGNE
     payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
     payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
     
     class Meta:
         model = Dispensation
         fields = [
-            'id', 'pharmacy', 'patient', 'patient_name', 'pharmacist_name', 'prescription',
+            'id', 'pharmacy', 'pharmacy_name', 'patient', 'patient_name', 'pharmacist_name', 'prescription',
             'dispensation_date', 'total_amount', 'payment_status', 'payment_status_display', 
             'payment_method', 'payment_method_display', 'items'
         ]
@@ -138,4 +139,37 @@ class DispensationCreateSerializer(serializers.Serializer):
     patient_id = serializers.IntegerField(required=False, allow_null=True)
     prescription_id = serializers.IntegerField(required=False, allow_null=True)
     payment_method = serializers.ChoiceField(choices=['cash', 'card', 'cnam', 'insurance'])
+    items = serializers.ListField(child=serializers.DictField())
+# ══════════════════ Commandes Patient ══════════════════
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    medication_name = serializers.CharField(source='medication.name', read_only=True)
+    medication_dosage = serializers.CharField(source='medication.dosage', read_only=True)
+    
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'medication', 'medication_name', 'medication_dosage', 'quantity']
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    pharmacy_name = serializers.CharField(source='pharmacy.name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'patient', 'patient_name', 'pharmacy', 'pharmacy_name', 
+            'status', 'status_display', 'notes', 'pharmacist_response', 
+            'items', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['patient', 'status', 'pharmacist_response']
+
+    def get_patient_name(self, obj):
+        u = obj.patient.user
+        return f"{u.first_name} {u.last_name}".strip() or u.username
+
+class OrderCreateSerializer(serializers.Serializer):
+    pharmacy_id = serializers.IntegerField()
+    notes = serializers.CharField(required=False, allow_null=True)
     items = serializers.ListField(child=serializers.DictField())

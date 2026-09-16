@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import DoctorLabViewSet, LabStaffLabViewSet, PatientLabViewSet, SuperAdminLabViewSet
+from .views import DoctorLabViewSet, LabStaffLabViewSet, PatientLabViewSet, SuperAdminLabViewSet, PublicLabViewSet
 
 urlpatterns = [
     # ====================== DOCTOR ======================
@@ -22,7 +22,6 @@ urlpatterns = [
     path('staff/requests/<int:pk>/', LabStaffLabViewSet.as_view({'get': 'requests_retrieve'})),
     path('staff/requests/<int:pk>/status/', LabStaffLabViewSet.as_view({'patch': 'update_status'})),
     
-    # ✅ NOUVELLE ROUTE PAIEMENT
     path('staff/requests/<int:pk>/mark-paid/', LabStaffLabViewSet.as_view({'post': 'mark_paid'}), name='lab-mark-paid'),
     
     path('staff/requests/<int:pk>/result/', LabStaffLabViewSet.as_view({'get': 'get_result'})),
@@ -35,6 +34,11 @@ urlpatterns = [
     path('patient/requests/', PatientLabViewSet.as_view({'get': 'requests_list'})),
     path('patient/requests/<int:pk>/', PatientLabViewSet.as_view({'get': 'requests_retrieve'})),
     path('patient/requests/<int:pk>/result/', PatientLabViewSet.as_view({'get': 'request_result'})),
+    
+    # ✅ ROUTES PAIEMENT
+    path('patient/requests/<int:pk>/pay/', PatientLabViewSet.as_view({'post': 'pay_request'}), name='lab-patient-pay'),
+    path('patient/requests/<int:pk>/pay-onsite/', PatientLabViewSet.as_view({'post': 'pay_onsite'}), name='lab-pay-onsite'),
+    path('patient/requests/<int:pk>/pay-stripe/', PatientLabViewSet.as_view({'post': 'pay_with_stripe'}), name='lab-pay-stripe'),
 
     # ====================== SUPER ADMIN ======================
     path('superadmin/labs/', SuperAdminLabViewSet.as_view({'get': 'labs_list', 'post': 'labs_create'})),
@@ -50,4 +54,11 @@ urlpatterns = [
     path('superadmin/results/<int:pk>/', SuperAdminLabViewSet.as_view({'get': 'results_retrieve'})),
     
     path('superadmin/stats/', SuperAdminLabViewSet.as_view({'get': 'stats'})),
-]
+
+    # ====================== PUBLIC (ANNUAIRE) ======================
+    path('public/labs/', PublicLabViewSet.as_view({'get': 'labs_list'})),
+    path('public/labs/<int:pk>/', PublicLabViewSet.as_view({'get': 'labs_detail'})),
+    path('public/tests/', PublicLabViewSet.as_view({'get': 'tests_list'})), 
+        path('superadmin/labs/<int:pk>/toggle_active/', SuperAdminLabViewSet.as_view({'post': 'toggle_active'}), name='lab-toggle-active'),
+
+]   

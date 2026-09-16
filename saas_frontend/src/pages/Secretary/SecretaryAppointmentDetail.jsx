@@ -91,7 +91,8 @@ const SecretaryAppointmentDetail = () => {
     setNotFound(false);
     setForbidden(false);
     try {
-      const res = await api.get(`/appointments/secretary/records/${id}/`);
+      // ✅ FIX: URL corrigée (sans records/)
+      const res = await api.get(`/appointments/secretary/${id}/`);
       setAppointment(res.data);
     } catch (err) {
       console.error('Error fetching appointment:', err);
@@ -161,7 +162,8 @@ const SecretaryAppointmentDetail = () => {
         cancellation_notes: cancelForm.cancellation_notes || undefined,
       };
 
-      await api.post(`/appointments/secretary/records/${id}/cancel/`, payload);
+      // ✅ FIX: URL corrigée (sans records/)
+      await api.post(`/appointments/secretary/${id}/cancel/`, payload);
       setShowCancelModal(false);
       fetchAppointment();
     } catch (err) {

@@ -69,33 +69,33 @@ urlpatterns = [
     }), name='patient-appointments-cancel'),
 
     # ====================== RENDEZ-VOUS DU SECRÉTAIRE ======================
-    path('secretary/records/', SecretaryAppointmentViewSet.as_view({
+    path('secretary/', SecretaryAppointmentViewSet.as_view({
         'get': 'list',
         'post': 'create',
     }), name='secretary-appointments-list'),
 
-    path('secretary/records/stats/', SecretaryAppointmentViewSet.as_view({
+    path('secretary/stats/', SecretaryAppointmentViewSet.as_view({
         'get': 'stats',
     }), name='secretary-appointments-stats'),
 
-    path('secretary/records/doctors-dropdown/', SecretaryAppointmentViewSet.as_view({
+    path('secretary/doctors-dropdown/', SecretaryAppointmentViewSet.as_view({
         'get': 'doctors_dropdown',
     }), name='secretary-appointments-doctors-dropdown'),
 
-    path('secretary/records/patients-dropdown/', SecretaryAppointmentViewSet.as_view({
+    path('secretary/patients-dropdown/', SecretaryAppointmentViewSet.as_view({
         'get': 'patients_dropdown',
     }), name='secretary-appointments-patients-dropdown'),
 
-    path('secretary/records/cabinets-dropdown/', SecretaryAppointmentViewSet.as_view({
+    path('secretary/cabinets-dropdown/', SecretaryAppointmentViewSet.as_view({
         'get': 'cabinets_dropdown',
     }), name='secretary-appointments-cabinets-dropdown'),
 
-    path('secretary/records/<int:pk>/', SecretaryAppointmentViewSet.as_view({
+    path('secretary/<int:pk>/', SecretaryAppointmentViewSet.as_view({
         'get': 'retrieve',
         'patch': 'partial_update',
     }), name='secretary-appointments-detail'),
 
-    path('secretary/records/<int:pk>/cancel/', SecretaryAppointmentViewSet.as_view({
+    path('secretary/<int:pk>/cancel/', SecretaryAppointmentViewSet.as_view({
         'post': 'cancel_appointment',
     }), name='secretary-appointments-cancel'),
 ]

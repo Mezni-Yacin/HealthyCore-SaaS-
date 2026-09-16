@@ -423,12 +423,15 @@ class DoctorWriteSerializer(serializers.ModelSerializer):
             'profile_photo',
         ]
 
-    def validate_user(self, value):
-        if hasattr(value, 'doctor_profile'):
-            raise serializers.ValidationError(
+        def validate_user(self, value):
+        # ✅ Si on modifie un médecin existant et qu'on ne change pas d'utilisateur, on autorise
+            if self.instance and self.instance.user_id == value.id:
+                return value
+            if hasattr(value, 'doctor_profile'):
+             raise serializers.ValidationError(
                 f"Cet utilisateur ({value.get_full_name()}) a déjà un profil médecin."
             )
-        return value
+            return value
 
     def validate_license_number(self, value):
         value = value.strip()

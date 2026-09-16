@@ -25,7 +25,13 @@ export default function SidebarPharmacist() {
           Caisse (Vente)
         </NavLink>
       </li>
-
+      {/* ✅ NOUVEAU LIEN : COMMANDES PATIENTS */}
+      <li className="nav-item">
+        <NavLink to="/pharmacy-orders" className={linkClass}>
+          <i className="bi bi-bag-check me-2"></i>
+          Commandes 
+        </NavLink>
+      </li>
       <li className="nav-item">
         <NavLink to="/pharmacy-stock" className={linkClass}>
           <i className="bi bi-box-seam me-2"></i>

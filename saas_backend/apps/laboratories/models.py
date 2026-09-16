@@ -5,6 +5,8 @@ from phonenumber_field.modelfields import PhoneNumberField
 from django.utils import timezone
 from apps.users.models import User, City, MedicalSpecialty, Patient
 from apps.cabinets.models import Doctor
+from decimal import Decimal
+
 
 class Laboratory(models.Model):
     name = models.CharField(max_length=200)
@@ -79,13 +81,17 @@ class LabTestType(models.Model):
     description = models.TextField(blank=True, null=True)
     preparation_instructions = models.TextField(blank=True, null=True)
     turnaround_time = models.PositiveIntegerField(help_text="Délai en heures")
-    price = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(0)])
+    price = models.DecimalField(
+        max_digits=10, 
+        decimal_places=3, 
+        validators=[MinValueValidator(Decimal('0'))]
+    )
     cnam_coverage = models.BooleanField(default=False)
     cnam_price = models.DecimalField(
         max_digits=10, 
         decimal_places=3, 
-        default=0.000,
-        validators=[MinValueValidator(0)]
+        default=Decimal('0.000'),
+        validators=[MinValueValidator(Decimal('0'))]
     )
     
     class Meta:

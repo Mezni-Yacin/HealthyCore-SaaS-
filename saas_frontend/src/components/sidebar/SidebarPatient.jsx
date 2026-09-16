@@ -60,6 +60,12 @@ export default function SidebarPatient() {
           <i className="bi bi-clipboard2-pulse me-2"></i>Mes Analyses
         </NavLink>
       </li>
+      <li className="nav-item">
+        <NavLink to="/patient/payments" className={({ isActive }) => `nav-link text-white d-flex align-items-center ${isActive ? 'active bg-primary' : 'hover-bg-secondary'}`}>
+          <i className="bi bi-credit-card-fill me-2"></i>
+          Mes Paiements
+        </NavLink>
+      </li>
 
       {/* Communication */}
       <li className="nav-item mt-3">

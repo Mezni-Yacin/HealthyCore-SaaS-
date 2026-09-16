@@ -9,24 +9,6 @@ from apps.cabinets.models import Doctor, Cabinet
 
 
 def _today_range():
-    """
-    ✅ CORRIGÉ CRITIQUE — CONVERT_TZ Bug MySQL
-
-    PROBLÈME : MySQL + USE_TZ=True + TIME_ZONE='Africa/Tunis' génère :
-      DATE(CONVERT_TZ(joined_at, UTC, Africa/Tunis)) = 2026-04-10
-    Mais CONVERT_TZ retourne NULL si les tables de timezone MySQL
-    ne sont pas chargées → DATE(NULL) = NULL → aucun résultat !
-
-    SOLUTION : Utiliser un filtre de plage __gte / __lt qui ne passe
-    pas par CONVERT_TZ. On calcule minuit en temps local (Tunis),
-    puis Django le convertit automatiquement en UTC pour la requête SQL.
-
-    Exemple pour Africa/Tunis (UTC+1) :
-      today_start = 2026-04-10 00:00:00+01:00  →  SQL: 2026-04-09 23:00:00 UTC
-      today_end   = 2026-04-11 00:00:00+01:00  →  SQL: 2026-04-10 23:00:00 UTC
-    Ce qui génère : WHERE joined_at >= '2026-04-09 23:00:00' AND joined_at < '2026-04-10 23:00:00'
-    → Pas de CONVERT_TZ, fonctionne toujours !
-    """
     now_local = timezone.localtime(timezone.now())
     today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + datetime.timedelta(days=1)

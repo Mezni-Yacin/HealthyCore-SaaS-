@@ -59,7 +59,8 @@ class LaboratoryCreateUpdateSerializer(serializers.ModelSerializer):
             'name', 'address', 'city', 'phone_number', 'email', 'website',
             'accreditation', 'accreditation_number', 'cnam_affiliated', 'cnam_code',
             'services_offered', 'specialties', 'opening_hours', 'sample_collection_hours',
-            'timezone', 'logo', 'banner', 'latitude', 'longitude', 'is_active'
+            'timezone', 'logo', 'banner', 'latitude', 'longitude'
+            # ✅ 'is_active' retiré d'ici
         ]
 
 

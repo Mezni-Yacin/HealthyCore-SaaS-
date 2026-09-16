@@ -1,33 +1,39 @@
-// src/components/sidebar/SidebarBase.jsx
-import { NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export default function SidebarBase({ children }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
-    <div className="d-flex flex-column h-100 bg-dark text-white">
-      {/* Header / Logo */}
-      <div className="p-4 border-bottom border-secondary">
-        <h4 className="mb-1 fw-bold">SaaS Médical</h4>
-        <small className="text-secondary">Espace connecté</small>
+    <div className="d-flex flex-column h-100 w-100 text-white">
+      
+      {/* Logo / Brand */}
+      <div className="p-4 border-bottom border-secondary border-opacity-25">
+        <Link to="/" className="text-decoration-none d-flex align-items-center gap-2 text-white">
+          <i className="bi bi-heart-pulse-fill text-danger fs-3"></i>
+          <div>
+            <h5 className="mb-0 fw-bold">HealthyCore</h5>
+            <small className="text-secondary" style={{ fontSize: '0.7rem' }}>Espace {user?.role === 'super_admin' ? 'Admin' : user?.role}</small>
+          </div>
+        </Link>
       </div>
 
       {/* Navigation principale */}
-      <nav className="flex-grow-1 p-3 overflow-auto">
-        <ul className="nav flex-column">
+      <nav className="flex-grow-1 py-3 overflow-auto" style={{ scrollbarWidth: 'thin' }}>
+        <ul className="nav flex-column px-2">
           {children}
         </ul>
       </nav>
 
-      {/* Déconnexion en bas */}
-      <div className="p-3 border-top border-secondary mt-auto">
+      {/* Footer / Déconnexion */}
+      <div className="p-3 border-top border-secondary border-opacity-25 mt-auto">
         <button
           onClick={logout}
-          className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2"
+          className="btn btn-outline-light w-100 d-flex align-items-center justify-content-center gap-2 py-2 rounded-3"
+          style={{ borderWidth: '1px', borderColor: 'rgba(255,255,255,0.2)' }}
         >
           <i className="bi bi-box-arrow-right"></i>
-          Déconnexion
+          <span className="fw-semibold" style={{ fontSize: '0.9rem' }}>Déconnexion</span>
         </button>
       </div>
     </div>

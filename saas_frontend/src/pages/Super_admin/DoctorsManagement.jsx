@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
+
 // ── Modal réutilisable ─────────────────────────────────────────────────────
 function Modal({ show, title, onClose, children, onSubmit, submitLabel, submitDisabled, submitVariant, size }) {
   if (!show) return null;
@@ -106,7 +107,6 @@ function StringListEditor({ label, items, onChange, placeholder }) {
 
 // ── Composant principal ────────────────────────────────────────────────────
 export default function DoctorsManagement() {
-  // ── Données ────────────────────────────────────────────────────
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -119,18 +119,15 @@ export default function DoctorsManagement() {
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 15;
 
-  // ── Dropdowns ──────────────────────────────────────────────────
   const [specialties, setSpecialties] = useState([]);
   const [availableUsers, setAvailableUsers] = useState([]);
   const [cabinets, setCabinets] = useState([]);
 
-  // ── Modal ──────────────────────────────────────────────────────
   const [showModal, setShowModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
 
-  // ── Formulaire ─────────────────────────────────────────────────
   const emptyForm = {
     user: '', specialty: '', cabinets: [],
     license_number: '', years_experience: '', cnam_code: '',
@@ -141,7 +138,6 @@ export default function DoctorsManagement() {
   };
   const [form, setForm] = useState({ ...emptyForm });
 
-  // ── Message ────────────────────────────────────────────────────
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
 
@@ -153,12 +149,7 @@ export default function DoctorsManagement() {
 
   useEffect(() => { setCurrentPage(1); }, [search, filterSpecialty, filterAccepts, filterTele, ordering]);
 
-  // ── Fetch dropdowns — CHAQUE UN INDÉPENDAMMENT ────────────────
-  // ⚠️ IMPORTANT : Ne PAS utiliser Promise.all car si UN SEUL endpoint
-  // échoue (ex: 404), TOUS les dropdowns restent vides.
-  // Chaque fetch gère ses propres erreurs.
   const fetchDropdowns = useCallback(async () => {
-    // 1) Spécialités
     try {
       const specRes = await api.get('/cabinets/specialties/');
       setSpecialties(Array.isArray(specRes.data) ? specRes.data : []);
@@ -167,7 +158,6 @@ export default function DoctorsManagement() {
       setSpecialties([]);
     }
 
-    // 2) Utilisateurs disponibles (role=doctor sans profil)
     try {
       const usersRes = await api.get('/cabinets/doctors-management/available-users/');
       setAvailableUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
@@ -176,7 +166,6 @@ export default function DoctorsManagement() {
       setAvailableUsers([]);
     }
 
-    // 3) Cabinets (pour le multi-select)
     try {
       const cabRes = await api.get('/cabinets/', { params: { page_size: 500, is_deleted: 'false' } });
       const cabData = cabRes.data;
@@ -189,7 +178,6 @@ export default function DoctorsManagement() {
 
   useEffect(() => { fetchDropdowns(); }, [fetchDropdowns]);
 
-  // ── Fetch doctors (paginé) ────────────────────────────────────
   const fetchDoctors = useCallback(async () => {
     setLoading(true);
     try {
@@ -220,19 +208,15 @@ export default function DoctorsManagement() {
 
   useEffect(() => { fetchDoctors(); }, [fetchDoctors]);
 
-  // ── Form helpers ───────────────────────────────────────────────
   const updateForm = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const openCreateModal = () => {
     setEditingDoctor(null);
     setForm({ ...emptyForm });
     setFormErrors({});
-    // Rafraîchir les users disponibles au moment d'ouvrir le modal
     api.get('/cabinets/doctors-management/available-users/').then(r => {
       setAvailableUsers(Array.isArray(r.data) ? r.data : []);
-    }).catch(err => {
-      console.error('[Doctors] Erreur rafraîchir available-users:', err);
-    });
+    }).catch(err => console.error(err));
     setShowModal(true);
   };
 
@@ -269,7 +253,12 @@ export default function DoctorsManagement() {
     setFormErrors({});
 
     const formData = new FormData();
-    formData.append('user', form.user);
+    
+    // ✅ FIX : N'envoyer 'user' que lors de la création
+    if (!editingDoctor) {
+      formData.append('user', form.user);
+    }
+    
     formData.append('specialty', form.specialty);
     formData.append('license_number', form.license_number.trim());
     if (form.years_experience !== '') formData.append('years_experience', form.years_experience);
@@ -279,16 +268,13 @@ export default function DoctorsManagement() {
     formData.append('accepts_new_patients', form.accepts_new_patients);
     formData.append('teleconsultation_available', form.teleconsultation_available);
 
-    // JSON fields
     const validEducation = (form.education || []).filter(s => s && s.trim());
     const validCertifications = (form.certifications || []).filter(s => s && s.trim());
     formData.append('education', JSON.stringify(validEducation));
     formData.append('certifications', JSON.stringify(validCertifications));
 
-    // M2M
     form.cabinets.forEach(id => formData.append('cabinets', id));
 
-    // File
     if (form.profile_photo) formData.append('profile_photo', form.profile_photo);
 
     try {
@@ -306,7 +292,7 @@ export default function DoctorsManagement() {
       setMessageType('success');
       setShowModal(false);
       fetchDoctors();
-      fetchDropdowns(); // Rafraîchir available-users
+      fetchDropdowns(); 
     } catch (err) {
       const errors = err.response?.data;
       if (typeof errors === 'object' && errors !== null) {
@@ -346,14 +332,11 @@ export default function DoctorsManagement() {
     }
   };
 
-  // ── Helpers ────────────────────────────────────────────────────
   const handleOrderToggle = (field) => setOrdering((prev) => (prev === field ? `-${field}` : field));
   const SortIcon = ({ field }) => ordering === field ? ' ▲' : ordering === `-${field}` ? ' ▼' : ' ↕';
 
-  // ── RENDER ─────────────────────────────────────────────────────
   return (
     <div className="container-fluid py-4">
-      {/* En-tête */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
           <h2 className="fw-bold mb-1">
@@ -367,7 +350,6 @@ export default function DoctorsManagement() {
         </button>
       </div>
 
-      {/* Message */}
       {message && (
         <div className={`alert alert-${messageType} alert-dismissible fade show`} role="alert">
           {message}
@@ -375,7 +357,6 @@ export default function DoctorsManagement() {
         </div>
       )}
 
-      {/* Filtres */}
       <div className="card shadow-sm border-0 mb-4">
         <div className="card-body">
           <div className="row g-2 align-items-center">
@@ -417,7 +398,6 @@ export default function DoctorsManagement() {
         </div>
       </div>
 
-      {/* Tableau */}
       <div className="card shadow-sm border-0">
         <div className="card-body p-0">
           {loading ? (
@@ -468,39 +448,25 @@ export default function DoctorsManagement() {
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <span className="badge bg-info text-dark">{doc.specialty_name}</span>
-                        </td>
+                        <td><span className="badge bg-info text-dark">{doc.specialty_name}</span></td>
                         <td><code>{doc.license_number}</code></td>
                         <td className="text-center">{doc.years_experience || 0} ans</td>
                         <td className="text-center">{doc.consultation_price > 0 ? `${doc.consultation_price} TND` : '—'}</td>
                         <td className="text-center">
-                          <span className={`badge ${doc.accepts_new_patients ? 'bg-success' : 'bg-secondary'}`}>
-                            {doc.accepts_new_patients ? 'Oui' : 'Non'}
-                          </span>
+                          <span className={`badge ${doc.accepts_new_patients ? 'bg-success' : 'bg-secondary'}`}>{doc.accepts_new_patients ? 'Oui' : 'Non'}</span>
                         </td>
                         <td className="text-center">
-                          <span className={`badge ${doc.teleconsultation_available ? 'bg-primary' : 'bg-light text-dark'}`}>
-                            {doc.teleconsultation_available ? 'Oui' : 'Non'}
-                          </span>
+                          <span className={`badge ${doc.teleconsultation_available ? 'bg-primary' : 'bg-light text-dark'}`}>{doc.teleconsultation_available ? 'Oui' : 'Non'}</span>
                         </td>
                         <td className="text-center">
-                          <span className="badge bg-warning text-dark">
-                            <i className="bi bi-star-fill me-1"></i>{doc.rating || '0'}
-                          </span>
+                          <span className="badge bg-warning text-dark"><i className="bi bi-star-fill me-1"></i>{doc.rating || '0'}</span>
                         </td>
                         <td className="text-center">
                           <div className="btn-group btn-group-sm">
                             <button className="btn btn-outline-primary" onClick={() => openEditModal(doc)} title="Modifier"><i className="bi bi-pencil"></i></button>
-                            <button className={`btn btn-sm ${doc.accepts_new_patients ? 'btn-outline-success' : 'btn-outline-warning'}`} onClick={() => handleToggle(doc, 'patients')} title="Toggle patients">
-                              <i className="bi bi-people-fill"></i>
-                            </button>
-                            <button className={`btn btn-sm ${doc.teleconsultation_available ? 'btn-outline-info' : 'btn-outline-secondary'}`} onClick={() => handleToggle(doc, 'tele')} title="Toggle téléconsultation">
-                              <i className="bi bi-camera-video"></i>
-                            </button>
-                            <button className="btn btn-outline-danger" onClick={() => handleDelete(doc)} title="Supprimer">
-                              <i className="bi bi-trash"></i>
-                            </button>
+                            <button className={`btn btn-sm ${doc.accepts_new_patients ? 'btn-outline-success' : 'btn-outline-warning'}`} onClick={() => handleToggle(doc, 'patients')} title="Toggle patients"><i className="bi bi-people-fill"></i></button>
+                            <button className={`btn btn-sm ${doc.teleconsultation_available ? 'btn-outline-info' : 'btn-outline-secondary'}`} onClick={() => handleToggle(doc, 'tele')} title="Toggle téléconsultation"><i className="bi bi-camera-video"></i></button>
+                            <button className="btn btn-outline-danger" onClick={() => handleDelete(doc)} title="Supprimer"><i className="bi bi-trash"></i></button>
                           </div>
                         </td>
                       </tr>
@@ -521,7 +487,6 @@ export default function DoctorsManagement() {
         </div>
       </div>
 
-      {/* ==================== MODAL CRÉER / MODIFIER ==================== */}
       <Modal
         show={showModal}
         title={editingDoctor ? 'Modifier le médecin' : 'Nouveau Médecin'}
@@ -532,148 +497,113 @@ export default function DoctorsManagement() {
         submitVariant={editingDoctor ? 'btn-warning' : 'btn-success'}
         size="modal-xl"
       >
-        {/* Section 1 : Infos principales */}
-        <h6 className="text-primary border-bottom pb-2 mb-3">
-          <i className="bi bi-person-fill me-1"></i> Informations principales
-        </h6>
+        <h6 className="text-primary border-bottom pb-2 mb-3"><i className="bi bi-person-fill me-1"></i> Informations principales</h6>
         <div className="row g-3">
           <div className="col-md-6">
-            <FormField label="Utilisateur (médecin)" required error={formErrors.user}
-              helpText={editingDoctor ? "L'utilisateur ne peut pas être modifié." : "Utilisateurs rôle=doctor sans profil"}>
-              <select className={`form-select ${formErrors.user ? 'is-invalid' : ''}`}
-                value={form.user} onChange={(e) => updateForm('user', e.target.value)}
-                disabled={!!editingDoctor}>
-                <option value="">— Sélectionner —</option>
-                {availableUsers.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name} ({u.email}) {!u.is_active ? '⚠️ Inactif' : ''}
-                  </option>
-                ))}
-              </select>
+            <FormField label="Utilisateur (médecin)" required error={formErrors.user} helpText={editingDoctor ? "L'utilisateur ne peut pas être modifié." : "Utilisateurs rôle=doctor sans profil"}>
+              {/* ✅ FIX: Afficher un input texte désactivé si on modifie, sinon le select */}
+              {editingDoctor ? (
+                <input 
+                  type="text" 
+                  className="form-control bg-light" 
+                  value={editingDoctor.user_detail ? `${editingDoctor.user_detail.full_name} (${editingDoctor.user_detail.email})` : 'N/A'} 
+                  disabled 
+                />
+              ) : (
+                <select className={`form-select ${formErrors.user ? 'is-invalid' : ''}`} value={form.user} onChange={(e) => updateForm('user', e.target.value)}>
+                  <option value="">— Sélectionner —</option>
+                  {availableUsers.map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name} ({u.email}) {!u.is_active ? '⚠️ Inactif' : ''}</option>
+                  ))}
+                </select>
+              )}
             </FormField>
           </div>
           <div className="col-md-6">
             <FormField label="Spécialité" required error={formErrors.specialty}>
-              <select className={`form-select ${formErrors.specialty ? 'is-invalid' : ''}`}
-                value={form.specialty} onChange={(e) => updateForm('specialty', e.target.value)}>
+              <select className={`form-select ${formErrors.specialty ? 'is-invalid' : ''}`} value={form.specialty} onChange={(e) => updateForm('specialty', e.target.value)}>
                 <option value="">— Sélectionner —</option>
                 {specialties.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
               </select>
             </FormField>
           </div>
           <div className="col-md-4">
-            <FormField label="Numéro de licence" required error={formErrors.license_number}
-              helpText="Unique — identifiant professionnel">
-              <input type="text" className={`form-control ${formErrors.license_number ? 'is-invalid' : ''}`}
-                value={form.license_number} onChange={(e) => updateForm('license_number', e.target.value)} placeholder="Ex: MED-2024-001" />
+            <FormField label="Numéro de licence" required error={formErrors.license_number} helpText="Unique — identifiant professionnel">
+              <input type="text" className={`form-control ${formErrors.license_number ? 'is-invalid' : ''}`} value={form.license_number} onChange={(e) => updateForm('license_number', e.target.value)} placeholder="Ex: MED-2024-001" />
             </FormField>
           </div>
           <div className="col-md-4">
             <FormField label="Années d'expérience" error={formErrors.years_experience}>
-              <input type="number" min="0" max="70" className={`form-control ${formErrors.years_experience ? 'is-invalid' : ''}`}
-                value={form.years_experience} onChange={(e) => updateForm('years_experience', e.target.value)} placeholder="0" />
+              <input type="number" min="0" max="70" className={`form-control ${formErrors.years_experience ? 'is-invalid' : ''}`} value={form.years_experience} onChange={(e) => updateForm('years_experience', e.target.value)} placeholder="0" />
             </FormField>
           </div>
           <div className="col-md-4">
             <FormField label="Code CNAM" error={formErrors.cnam_code}>
-              <input type="text" className={`form-control ${formErrors.cnam_code ? 'is-invalid' : ''}`}
-                value={form.cnam_code} onChange={(e) => updateForm('cnam_code', e.target.value)} />
+              <input type="text" className={`form-control ${formErrors.cnam_code ? 'is-invalid' : ''}`} value={form.cnam_code} onChange={(e) => updateForm('cnam_code', e.target.value)} />
             </FormField>
           </div>
         </div>
 
-        {/* Section 2 : Tarification & Bio */}
-        <h6 className="text-info border-bottom pb-2 mt-4 mb-3">
-          <i className="bi bi-cash-stack me-1"></i> Tarification & Bio
-        </h6>
+        <h6 className="text-info border-bottom pb-2 mt-4 mb-3"><i className="bi bi-cash-stack me-1"></i> Tarification & Bio</h6>
         <div className="row g-3">
           <div className="col-md-4">
             <FormField label="Prix consultation (TND)" error={formErrors.consultation_price}>
-              <input type="number" step="0.001" min="0" className={`form-control ${formErrors.consultation_price ? 'is-invalid' : ''}`}
-                value={form.consultation_price} onChange={(e) => updateForm('consultation_price', e.target.value)} placeholder="0.000" />
+              <input type="number" step="0.001" min="0" className={`form-control ${formErrors.consultation_price ? 'is-invalid' : ''}`} value={form.consultation_price} onChange={(e) => updateForm('consultation_price', e.target.value)} placeholder="0.000" />
             </FormField>
           </div>
           <div className="col-md-4">
             <div className="form-check form-switch mt-4">
-              <input className="form-check-input" type="checkbox" id="accepts_new_patients"
-                checked={form.accepts_new_patients} onChange={(e) => updateForm('accepts_new_patients', e.target.checked)} />
+              <input className="form-check-input" type="checkbox" id="accepts_new_patients" checked={form.accepts_new_patients} onChange={(e) => updateForm('accepts_new_patients', e.target.checked)} />
               <label className="form-check-label fw-semibold" htmlFor="accepts_new_patients">Accepte nouveaux patients</label>
             </div>
           </div>
           <div className="col-md-4">
             <div className="form-check form-switch mt-4">
-              <input className="form-check-input" type="checkbox" id="teleconsultation"
-                checked={form.teleconsultation_available} onChange={(e) => updateForm('teleconsultation_available', e.target.checked)} />
+              <input className="form-check-input" type="checkbox" id="teleconsultation" checked={form.teleconsultation_available} onChange={(e) => updateForm('teleconsultation_available', e.target.checked)} />
               <label className="form-check-label fw-semibold" htmlFor="teleconsultation">Téléconsultation</label>
             </div>
           </div>
           <div className="col-md-12">
             <FormField label="Biographie" error={formErrors.bio}>
-              <textarea className={`form-control ${formErrors.bio ? 'is-invalid' : ''}`}
-                value={form.bio} onChange={(e) => updateForm('bio', e.target.value)} rows="3" placeholder="Biographie du médecin..." />
+              <textarea className={`form-control ${formErrors.bio ? 'is-invalid' : ''}`} value={form.bio} onChange={(e) => updateForm('bio', e.target.value)} rows="3" placeholder="Biographie du médecin..." />
             </FormField>
           </div>
         </div>
 
-        {/* Section 3 : Éducation & Certifications */}
-        <h6 className="text-success border-bottom pb-2 mt-4 mb-3">
-          <i className="bi bi-mortarboard me-1"></i> Formation & Certifications
-        </h6>
+        <h6 className="text-success border-bottom pb-2 mt-4 mb-3"><i className="bi bi-mortarboard me-1"></i> Formation & Certifications</h6>
         <div className="row g-3">
           <div className="col-md-6">
-            <StringListEditor
-              label="Formation / Éducation"
-              items={form.education || []}
-              onChange={(items) => updateForm('education', items)}
-              placeholder="Ex: Doctorat en Médecine - Faculté de Tunis"
-            />
+            <StringListEditor label="Formation / Éducation" items={form.education || []} onChange={(items) => updateForm('education', items)} placeholder="Ex: Doctorat en Médecine - Faculté de Tunis" />
           </div>
           <div className="col-md-6">
-            <StringListEditor
-              label="Certifications"
-              items={form.certifications || []}
-              onChange={(items) => updateForm('certifications', items)}
-              placeholder="Ex: Board Certified Cardiology"
-            />
+            <StringListEditor label="Certifications" items={form.certifications || []} onChange={(items) => updateForm('certifications', items)} placeholder="Ex: Board Certified Cardiology" />
           </div>
         </div>
 
-        {/* Section 4 : Cabinets */}
-        <h6 className="text-warning border-bottom pb-2 mt-4 mb-3">
-          <i className="bi bi-hospital me-1"></i> Cabinets rattachés
-        </h6>
+        <h6 className="text-warning border-bottom pb-2 mt-4 mb-3"><i className="bi bi-hospital me-1"></i> Cabinets rattachés</h6>
         <div className="row g-3">
           <div className="col-md-12">
             <FormField label="Cabinets" error={formErrors.cabinets} helpText="Ctrl+clic pour sélectionner plusieurs">
-              <select multiple className={`form-control ${formErrors.cabinets ? 'is-invalid' : ''}`} style={{ height: '100px' }}
-                value={form.cabinets} onChange={(e) => updateForm('cabinets', Array.from(e.target.selectedOptions, o => o.value))}>
+              <select multiple className={`form-control ${formErrors.cabinets ? 'is-invalid' : ''}`} style={{ height: '100px' }} value={form.cabinets} onChange={(e) => updateForm('cabinets', Array.from(e.target.selectedOptions, o => o.value))}>
                 {cabinets.map(c => <option key={c.id} value={c.id}>{c.name} — {c.city_name || ''}</option>)}
               </select>
             </FormField>
           </div>
         </div>
 
-        {/* Section 5 : Photo */}
-        <h6 className="text-danger border-bottom pb-2 mt-4 mb-3">
-          <i className="bi bi-camera me-1"></i> Photo de profil
-        </h6>
+        <h6 className="text-danger border-bottom pb-2 mt-4 mb-3"><i className="bi bi-camera me-1"></i> Photo de profil</h6>
         <div className="row g-3">
           <div className="col-md-6">
             <FormField label="Photo du médecin" error={formErrors.profile_photo}>
-              <input type="file" accept="image/png,image/jpeg,image/jpg"
-                className={`form-control ${formErrors.profile_photo ? 'is-invalid' : ''}`}
-                onChange={(e) => updateForm('profile_photo', e.target.files[0] || null)} />
+              <input type="file" accept="image/png,image/jpeg,image/jpg" className={`form-control ${formErrors.profile_photo ? 'is-invalid' : ''}`} onChange={(e) => updateForm('profile_photo', e.target.files[0] || null)} />
               <div className="form-text">JPG, PNG. {form.profile_photo && <span className="text-success">Fichier sélectionné</span>}</div>
             </FormField>
           </div>
         </div>
 
-        {/* Erreurs globales */}
         {formErrors.detail && <div className="alert alert-danger mt-3">{formErrors.detail}</div>}
         {formErrors.non_field_errors && (
-          <div className="alert alert-danger mt-3">
-            {Array.isArray(formErrors.non_field_errors) ? formErrors.non_field_errors.join(' | ') : formErrors.non_field_errors}
-          </div>
+          <div className="alert alert-danger mt-3">{Array.isArray(formErrors.non_field_errors) ? formErrors.non_field_errors.join(' | ') : formErrors.non_field_errors}</div>
         )}
       </Modal>
     </div>

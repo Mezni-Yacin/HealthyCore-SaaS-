@@ -9,11 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ═══════════════════════════════════════════════════════════════
-# 🔑 CONFIGURATION IA - COLLE TA VRAIE CLE MISTRAL ICI ⬇️
-# ═══════════════════════════════════════════════════════════════
-MISTRAL_API_KEY = "WQPjvxcp62tut8ZpVimP3JvHiCVEq5h4"
-# ═══════════════════════════════════════════════════════════════
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -150,7 +145,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PARSER_CLASSES': (
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.FormParser',
-        'rest_framework.parsers.MultiPartParser',  # OBLIGATOIRE pour upload photo
+        'rest_framework.parsers.MultiPartParser',  
     ),
 }
 
@@ -160,8 +155,6 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
 }
-
-# Ajouter à la fin de ton settings.py
 
 # ====================== STRIPE CONFIG ======================
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', 'sk_test_votre_cle_test')
@@ -173,7 +166,7 @@ STRIPE_SUCCESS_URL = os.getenv('STRIPE_SUCCESS_URL', 'http://localhost:5173/invo
 STRIPE_CANCEL_URL = os.getenv('STRIPE_CANCEL_URL', 'http://localhost:5173/invoices')
 
 # Devise pour la Tunisie (Stripe utilise "tnr" pour le Dinar)
-STRIPE_CURRENCY = 'eur'  # ou 'eur' si tu veux tester avec une devise supportée
+STRIPE_CURRENCY = 'eur' 
 
 # ====================== EMAIL CONFIG ======================
 
@@ -189,3 +182,4 @@ DEFAULT_FROM_EMAIL = 'HealthyCore_saas@healthycore.tn'
 # EMAIL_HOST_USER = 'ton.email@gmail.com'
 # EMAIL_HOST_PASSWORD = 'ton_mot_de_passe_application' # Utilise un mot de passe d'application Gmail
 # DEFAULT_FROM_EMAIL = 'ton.email@gmail.com'
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')

@@ -185,11 +185,13 @@ class MedicalRecordListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     # ── Patient helpers ──
-
     def _get_patient_full_name(self, patient):
         if hasattr(patient, 'user') and patient.user:
-            return patient.user.get_full_name()
-        return str(patient)
+            full_name = patient.user.get_full_name()
+            if full_name:
+                return full_name
+            return patient.user.username or patient.user.email or f"Patient #{patient.id}"
+        return str(patient) if str(patient) != "Patient object" else f"Patient #{patient.id}"
 
     def _build_patient_info(self, patient):
         info = {'id': patient.id}
@@ -214,7 +216,6 @@ class MedicalRecordListSerializer(serializers.ModelSerializer):
         return info
 
     # ── Doctor helpers ──
-
     def _get_doctor_full_name(self, doctor):
         if not doctor:
             return None
@@ -239,7 +240,6 @@ class MedicalRecordListSerializer(serializers.ModelSerializer):
         return info
 
     # ── MethodFields ──
-
     def get_patient_name(self, obj):
         return self._get_patient_full_name(obj.patient)
 
@@ -271,6 +271,7 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
     patient_info = serializers.SerializerMethodField()
     doctor_info = serializers.SerializerMethodField()
     appointment_info = serializers.SerializerMethodField()
+    cabinet_info = serializers.SerializerMethodField() # ✅ AJOUTÉ ICI
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     confidentiality_display = serializers.CharField(source='get_confidentiality_level_display', read_only=True)
     prescriptions = PrescriptionDetailSerializer(many=True, read_only=True)
@@ -283,6 +284,7 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
             'id', 'patient', 'patient_info',
             'doctor', 'doctor_info',
             'appointment', 'appointment_info',
+            'cabinet_info', # ✅ AJOUTÉ DANS LES CHAMPS
             'symptoms', 'diagnosis', 'diagnosis_code',
             'treatment', 'follow_up_needed', 'follow_up_date',
             'priority', 'priority_display',
@@ -296,13 +298,27 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'date', 'created_at', 'updated_at']
 
+    # ✅ CORRIGÉ : Méthode déplacée hors de la classe Meta
+    def get_cabinet_info(self, obj):
+        if obj.appointment and hasattr(obj.appointment, 'cabinet') and obj.appointment.cabinet:
+            c = obj.appointment.cabinet
+            return {
+                'id': c.id,
+                'name': c.name,
+                'address': getattr(c, 'address', None)
+            }
+        return None
+
     def get_patient_info(self, obj):
         p = obj.patient
         if not p:
             return None
         info = {'id': p.id}
         if hasattr(p, 'user') and p.user:
-            info['full_name'] = p.user.get_full_name()
+            full_name = p.user.get_full_name()
+            if not full_name:
+                full_name = p.user.username or p.user.email or f"Patient #{p.id}"
+            info['full_name'] = full_name
             info['first_name'] = p.user.first_name
             info['last_name'] = p.user.last_name
             if hasattr(p.user, 'email') and p.user.email:
@@ -312,7 +328,7 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
             if hasattr(p.user, 'profile_picture') and p.user.profile_picture:
                 info['profile_picture'] = str(p.user.profile_picture)
         else:
-            info['full_name'] = str(p)
+            info['full_name'] = f"Patient #{p.id}"
         if hasattr(p, 'date_of_birth') and p.date_of_birth:
             info['date_of_birth'] = str(p.date_of_birth)
         if hasattr(p, 'gender'):

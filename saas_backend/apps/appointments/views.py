@@ -349,6 +349,8 @@ class DoctorAppointmentViewSet(viewsets.GenericViewSet):
 
 # ====================== PATIENT ======================
 
+# ====================== PATIENT ======================
+
 class PatientAppointmentViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = AppointmentPagination
@@ -397,6 +399,15 @@ class PatientAppointmentViewSet(viewsets.GenericViewSet):
         date_to = params.get('date_to')
         if date_to:
             queryset = queryset.filter(date_time__date__lte=date_to)
+
+        # NOUVEAUX FILTRES AJOUTÉS
+        consultation_type = params.get('consultation_type')
+        if consultation_type:
+            queryset = queryset.filter(consultation_type=consultation_type)
+
+        is_teleconsultation = params.get('is_teleconsultation')
+        if is_teleconsultation and is_teleconsultation.lower() == 'true':
+            queryset = queryset.filter(is_teleconsultation=True)
 
         ordering = params.get('ordering', '-date_time')
         allowed_orderings = ['date_time', '-date_time', 'created_at', '-created_at']

@@ -1,11 +1,14 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
+from rest_framework.permissions import AllowAny
 from django.db.models import Sum, Count, Q, DecimalField
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from datetime import date, timedelta
+import stripe
+from django.conf import settings
 from decimal import Decimal
 
 from .models import Laboratory, LabTestType, LabTestRequest, LabResult
@@ -25,9 +28,12 @@ def _get_doctor(request):
         raise PermissionDenied("Profil médecin introuvable.")
 
 def _get_lab_for_staff(request):
-    lab = Laboratory.objects.filter(Q(owner=request.user) | Q(secretaries=request.user), is_deleted=False, is_active=True).first()
+    lab = Laboratory.objects.filter(
+        Q(owner=request.user) | Q(secretaries=request.user), 
+        is_deleted=False
+    ).first()
     if not lab:
-        raise PermissionDenied("Aucun laboratoire assigné.")
+        raise NotFound("Aucun laboratoire configuré.")
     return lab
 
 def _get_patient(request):
@@ -128,7 +134,7 @@ class LabStaffLabViewSet(viewsets.ViewSet):
     def my_lab_detail(self, request):
         lab = Laboratory.objects.filter(
             Q(owner=request.user) | Q(secretaries=request.user),
-            is_deleted=False, is_active=True
+            is_deleted=False
         ).first()
         if not lab:
             return Response({'detail': 'Aucun laboratoire trouvé.'}, status=404)
@@ -257,7 +263,6 @@ class LabStaffLabViewSet(viewsets.ViewSet):
         res.save()
         return Response(LabResultDetailSerializer(res).data)
 
-    # ✅ NOUVELLE ACTION : Marquer comme payé
     @action(detail=True, methods=['post'], url_path='mark-paid')
     def mark_paid(self, request, pk=None):
         try:
@@ -334,6 +339,89 @@ class PatientLabViewSet(viewsets.ViewSet):
         except LabResult.DoesNotExist:
             return Response({'detail': 'Non disponible.'}, status=404)
 
+    # ✅ PAIEMENT (Route générique utilisée avant l'intégration Stripe)
+    @action(detail=True, methods=['post'], url_path='pay')
+    def pay_request(self, request, pk=None):
+        try:
+            req = self._get_qs(request).get(pk=pk)
+        except LabTestRequest.DoesNotExist:
+            return Response({'detail': 'Introuvable.'}, status=404)
+        
+        if req.payment_status == 'paid':
+            return Response({'detail': 'Cette demande est déjà payée.'}, status=400)
+            
+        payment_method = request.data.get('payment_method', 'online')
+        valid_methods = ['online', 'cnam', 'insurance', 'card']
+        if payment_method not in valid_methods:
+            return Response({'detail': 'Méthode de paiement invalide.'}, status=400)
+            
+        req.payment_status = 'paid'
+        req.payment_method = payment_method
+        req.save(update_fields=['payment_status', 'payment_method'])
+        
+        return Response(LabTestRequestDetailSerializer(req).data)
+
+    # ✅ PAIEMENT SUR PLACE
+    @action(detail=True, methods=['post'], url_path='pay-onsite')
+    def pay_onsite(self, request, pk=None):
+        try:
+            req = self._get_qs(request).get(pk=pk)
+        except LabTestRequest.DoesNotExist:
+            return Response({'detail': 'Introuvable.'}, status=404)
+        
+        if req.payment_status == 'paid':
+            return Response({'detail': 'Déjà payé.'}, status=400)
+            
+        req.payment_status = 'paid'  
+        req.payment_method = request.data.get('method', 'cash')
+        req.save()
+        return Response({'detail': 'Paiement sur place enregistré.'})
+
+    # ✅ PAIEMENT EN LIGNE (STRIPE)
+    @action(detail=True, methods=['post'], url_path='pay-stripe')
+    def pay_with_stripe(self, request, pk=None):
+        try:
+            req = self._get_qs(request).get(pk=pk)
+        except LabTestRequest.DoesNotExist:
+            return Response({'detail': 'Introuvable.'}, status=404)
+            
+        if req.payment_status == 'paid':
+            return Response({'detail': 'Déjà payé.'}, status=400)
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        try:
+            lab_name = req.laboratory.name if req.laboratory else "Laboratoire"
+            test_names_list = list(req.tests.values_list('name', flat=True))
+            description = ", ".join(test_names_list) if test_names_list else "Analyses Médicales"
+
+            success_url = getattr(settings, 'STRIPE_SUCCESS_URL', 'http://localhost:5173/payment/success')
+            cancel_url = getattr(settings, 'STRIPE_CANCEL_URL', 'http://localhost:5173/payment/cancel')
+
+            amount_in_cents = int(float(req.total_price) * 100)
+
+            checkout_session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': getattr(settings, 'STRIPE_CURRENCY', 'eur'),
+                        'product_data': {
+                            'name': f'Analyses Médicales - {lab_name}',
+                            'description': description,
+                        },
+                        'unit_amount': amount_in_cents,
+                    },
+                    'quantity': 1,
+                }],
+                mode='payment',
+                success_url=f"{success_url}?success=1&session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{cancel_url}?canceled=1",
+                metadata={'request_id': req.id, 'patient_id': request.user.id}
+            )
+            return Response({'url': checkout_session.url})
+        except Exception as e:
+            return Response({'detail': str(e)}, status=400)
+
 
 # ══════════════════ SUPER ADMIN ══════════════════
 class SuperAdminLabViewSet(viewsets.ViewSet):
@@ -361,6 +449,22 @@ class SuperAdminLabViewSet(viewsets.ViewSet):
         s = LaboratoryCreateUpdateSerializer(lab, data=request.data, partial=True)
         s.is_valid(raise_exception=True)
         return Response(LaboratoryDetailSerializer(s.save()).data)
+
+    # ✅ ACTION : Activer/Désactiver un laboratoire
+    @action(detail=True, methods=['post'], url_path='toggle_active')
+    def toggle_active(self, request, pk=None):
+        try:
+            lab = Laboratory.objects.get(pk=pk, is_deleted=False)
+        except Laboratory.DoesNotExist:
+            return Response({'detail': 'Introuvable.'}, status=404)
+        
+        lab.is_active = not lab.is_active
+        lab.save(update_fields=['is_active'])
+        
+        return Response({
+            'detail': f'Laboratoire {"activé" if lab.is_active else "désactivé"} avec succès.',
+            'is_active': lab.is_active
+        }, status=200)
 
     def labs_destroy(self, request, pk=None):
         try:
@@ -451,3 +555,23 @@ class SuperAdminLabViewSet(viewsets.ViewSet):
                 )['s']
             ),
         })
+
+
+# ══════════════════ PUBLIC (ANNUAIRE) ══════════════════
+class PublicLabViewSet(viewsets.ViewSet):
+    permission_classes = [AllowAny]
+
+    def labs_list(self, request):
+        qs = Laboratory.objects.filter(is_deleted=False, is_active=True).select_related('city')
+        return Response(LaboratoryListSerializer(qs, many=True).data)
+
+    def labs_detail(self, request, pk=None):
+        try:
+            lab = Laboratory.objects.get(pk=pk, is_deleted=False, is_active=True)
+            return Response(LaboratoryDetailSerializer(lab).data)
+        except Laboratory.DoesNotExist:
+            return Response({'detail': 'Introuvable.'}, status=404)
+            
+    def tests_list(self, request):
+        qs = LabTestType.objects.all().order_by('category', 'name')
+        return Response(LabTestTypeListSerializer(qs, many=True).data)

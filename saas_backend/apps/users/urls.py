@@ -16,7 +16,9 @@ from .views import (
     CityViewSet,
     GovernorateViewSet,
     MedicalSpecialtyViewSet,
-    public_register, # ✅ IMPORT AJOUTÉ ICI
+    public_register,
+    public_user_profile,
+    public_stats
 )
 
 router = DefaultRouter()
@@ -36,6 +38,7 @@ urlpatterns = [
     path('me/', user_me, name='user_me'),
     path('profile/', user_profile, name='user_profile'),
     path('patient-profile/', patient_profile, name='patient_profile'),
+    path('<int:pk>/profile/', public_user_profile, name='public-user-profile'),
 
     # Documents
     path('documents/', upload_document, name='upload_document'),
@@ -43,6 +46,7 @@ urlpatterns = [
     
     # ✅ ROUTE D'INSCRIPTION PUBLIQUE
     path('register/', public_register, name='public_register'),
+    path('public-stats/', public_stats, name='public-stats'),
     
     # ViewSets
     path('', include(router.urls)),

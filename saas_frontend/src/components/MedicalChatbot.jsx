@@ -1,132 +1,159 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
+import ReactMarkdown from 'react-markdown';
 
-const MedicalChatbot = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState([]);
-    const [input, setInput] = useState('');
-    const [loading, setLoading] = useState(false);
-    const chatEndRef = useRef(null);
-    const inputRef = useRef(null);
+const MedicalChatbot = ({ patientId }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const messagesEndRef = useRef(null);
 
-    useEffect(() => {
-        if (isOpen) {
-            api.get('/ai/chat/').then(r => setMessages(r.data)).catch(() => {});
-            setTimeout(() => inputRef.current?.focus(), 300);
-        }
-    }, [isOpen]);
+  useEffect(() => {
+    if (isOpen && !sessionId) {
+      initSession();
+    }
+  }, [isOpen, sessionId]);
 
-    useEffect(() => {
-        if (isOpen) {
-            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-    }, [messages, loading, isOpen]);
+  const initSession = async () => {
+    try {
+      const res = await api.post('/ai/create-session/', { patient_id: patientId });
+      setSessionId(res.data.session_id);
+      setMessages([{ 
+        role: 'assistant', 
+        content: "Bonjour Docteur. Je suis votre assistant médical IA. Comment puis-je vous aider aujourd'hui ?" 
+      }]);
+    } catch (err) {
+      setError("Impossible d'initialiser l'IA.");
+      console.error(err);
+    }
+  };
 
-    const sendMessage = (e) => {
-        e.preventDefault();
-        if (!input.trim() || loading) return;
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
-        const userMsg = { role: 'user', content: input, time: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) };
-        
-        setMessages(prev => [...prev, userMsg]);
-        const currentInput = input;
-        setInput('');
-        setLoading(true);
+  const handleSend = async () => {
+    if (!input.trim() || !sessionId) return;
 
-        api.post('/ai/chat/', { message: currentInput })
-            .then(r => setMessages(prev => [...prev, r.data]))
-            .catch(() => setMessages(prev => [...prev, { role: 'assistant', content: "Erreur technique. Réessayez.", time: "--:--" }]))
-            .finally(() => setLoading(false));
-    };
+    const userMsg = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMsg]);
+    const currentInput = input;
+    setInput('');
+    setIsLoading(true);
+    setError(null);
 
-    return (
-        <div className="position-fixed bottom-0 end-0 p-4" style={{ zIndex: 1050 }}>
-            {/* Bouton bleu */}
-            {!isOpen && (
-                <div
-                    className="bg-primary text-white rounded-circle shadow-lg d-flex align-items-center justify-content-center"
-                    style={{ width: 60, height: 60, cursor: 'pointer' }}
-                    onClick={() => setIsOpen(true)}
+    try {
+      const res = await api.post('/ai/chat/', {
+        session_id: sessionId,
+        message: currentInput,
+        patient_id: patientId
+      });
+      
+      const botMsg = { role: 'assistant', content: res.data.reply };
+      setMessages((prev) => [...prev, botMsg]);
+    } catch (err) {
+      setError("Erreur de communication avec le serveur IA.");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        className="btn btn-primary rounded-circle shadow-lg position-fixed"
+        style={{ bottom: '20px', right: '20px', width: '60px', height: '60px', fontSize: '24px', zIndex: 1051 }}
+        onClick={() => setIsOpen(!isOpen)}
+        title="Assistant IA"
+      >
+        {isOpen ? '✕' : '🤖'}
+      </button>
+
+      {isOpen && (
+        <div 
+          className="card shadow position-fixed d-flex flex-column" 
+          style={{ 
+            bottom: '90px', 
+            right: '20px', 
+            width: '380px', 
+            height: '550px', 
+            zIndex: 1050, 
+            borderRadius: '15px', 
+            overflow: 'hidden',
+            border: 'none'
+          }}
+        >
+          <div className="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+            <div>
+              <h6 className="mb-0 fw-bold">Assistant Médical IA</h6>
+              <small style={{ fontSize: '0.7rem' }}>
+                {patientId ? "Contexte: Dossier patient lié" : "Contexte: Consultation générale"}
+              </small>
+            </div>
+            <button className="btn btn-sm btn-light" onClick={() => setIsOpen(false)}>Réduire</button>
+          </div>
+
+          <div className="card-body p-3 overflow-auto bg-light" style={{ flexGrow: 1 }}>
+            {messages.map((msg, idx) => (
+              <div key={idx} className={`d-flex mb-3 ${msg.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
+                <div 
+                  className={`p-3 rounded-3 shadow-sm ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-white text-dark border'}`}
+                  style={{ maxWidth: '85%' }}
                 >
-                    <i className="bi bi-chat-dots" style={{ fontSize: 24 }}></i>
+                  <div style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
                 </div>
-            )}
+              </div>
+            ))}
 
-            {/* Fenetre de chat */}
-            {isOpen && (
-                <div className="card shadow-lg border-0" style={{ width: 380, height: 500, display: 'flex', flexDirection: 'column' }}>
-                    {/* Header */}
-                    <div className="bg-primary text-white p-3 d-flex justify-content-between align-items-center">
-                        <div className="d-flex align-items-center gap-2">
-                            <i className="bi bi-robot" style={{ fontSize: 20 }}></i>
-                            <div>
-                                <div className="fw-bold">Assistant IA</div>
-                                <div style={{ fontSize: 12, opacity: 0.8 }}>En ligne</div>
-                            </div>
-                        </div>
-                        <button className="btn btn-link text-white p-0" onClick={() => setIsOpen(false)}>
-                            <i className="bi bi-x-lg" style={{ fontSize: 20 }}></i>
-                        </button>
-                    </div>
-
-                    {/* Messages */}
-                    <div className="p-3 overflow-auto bg-light" style={{ flex: 1 }}>
-                        {messages.length === 0 && !loading && (
-                            <div className="text-center text-muted mt-5">
-                                <i className="bi bi-chat-left-text" style={{ fontSize: 40, opacity: 0.5 }}></i>
-                                <p className="mt-2">Bonjour ! Comment puis-je vous aider ?</p>
-                            </div>
-                        )}
-
-                        {messages.map((msg, i) => (
-                            <div key={i} className={`d-flex mb-2 ${msg.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
-                                <div
-                                    className={`p-2 rounded-3 ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-white border'}`}
-                                    style={{ maxWidth: '80%' }}
-                                >
-                                    <div>{msg.content}</div>
-                                    <div className="text-end mt-1" style={{ fontSize: 10, opacity: 0.6 }}>{msg.time}</div>
-                                </div>
-                            </div>
-                        ))}
-
-                        {loading && (
-                            <div className="d-flex justify-content-start mb-2">
-                                <div className="p-2 rounded-3 bg-white border">
-                                    <span className="spinner-border spinner-border-sm text-primary me-2"></span>
-                                    <span className="text-muted">Écriture...</span>
-                                </div>
-                            </div>
-                        )}
-                        <div ref={chatEndRef} />
-                    </div>
-
-                    {/* Input */}
-                    <div className="p-3 bg-white border-top">
-                        <form onSubmit={sendMessage} className="d-flex gap-2">
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                className="form-control form-control-sm"
-                                placeholder="Tapez votre message..."
-                                value={input}
-                                onChange={e => setInput(e.target.value)}
-                                disabled={loading}
-                            />
-                            <button type="submit" className="btn btn-primary btn-sm" disabled={loading || !input.trim()}>
-                                <i className="bi bi-send"></i>
-                            </button>
-                        </form>
-                        <div className="text-center mt-1">
-                            <small className="text-muted" style={{ fontSize: 10 }}>
-                                <i className="bi bi-shield-exclamation me-1"></i>Informel - Ne remplace pas un medecin.
-                            </small>
-                        </div>
-                    </div>
+            {isLoading && (
+              <div className="d-flex justify-content-start mb-3">
+                <div className="p-3 rounded-3 bg-white border shadow-sm">
+                  <div className="d-flex gap-1">
+                    <span className="spinner-grow spinner-grow-sm text-primary" style={{ animationDelay: '0s' }}></span>
+                    <span className="spinner-grow spinner-grow-sm text-primary" style={{ animationDelay: '0.2s' }}></span>
+                    <span className="spinner-grow spinner-grow-sm text-primary" style={{ animationDelay: '0.4s' }}></span>
+                  </div>
                 </div>
+              </div>
             )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="card-footer p-2 bg-white border-top">
+            {error && <div className="alert alert-danger py-2 px-3 mb-2" style={{ fontSize: '0.8rem' }}>{error}</div>}
+            <div className="input-group">
+              <input
+                type="text"
+                className="form-control border-0"
+                placeholder="Posez une question médicale..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
+                disabled={isLoading}
+                style={{ fontSize: '0.9rem' }}
+              />
+              <button 
+                className="btn btn-primary" 
+                onClick={handleSend} 
+                disabled={isLoading || !input.trim()}
+              >
+                Envoyer
+              </button>
+            </div>
+            <small className="text-muted d-block text-center mt-1" style={{ fontSize: '0.7rem' }}>
+              ⚠️ L'IA peut faire des erreurs. Vérifiez toujours les informations critiques.
+            </small>
+          </div>
         </div>
-    );
+      )}
+    </>
+  );
 };
 
 export default MedicalChatbot;

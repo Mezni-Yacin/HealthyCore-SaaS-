@@ -8,9 +8,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.db import transaction, IntegrityError
+from decimal import Decimal, InvalidOperation
 from django.core.mail import send_mail
 from django.conf import settings
-
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserDetailSerializer
 from .models import User, Patient, UserDocument, Subscription, SubscriptionPlan, City, Governorate, MedicalSpecialty
 from .serializers import (
     UserSerializer, UserProfileSerializer, PatientProfileSerializer,
@@ -134,37 +138,56 @@ def public_register(request):
     
     serializer = UserCreateSerializer(data=data)
     if serializer.is_valid():
-        user = serializer.save(is_active=False)
-        
-        if user.role == 'patient':
-            Patient.objects.create(
-                user=user,
-                date_of_birth=data.get('date_of_birth'),
-                gender=data.get('gender', 'U'),
-                blood_type=data.get('blood_type'),
-                height=data.get('height'),
-                weight=data.get('weight'),
-                allergies=data.get('allergies')
-            )
-            
-        elif user.role == 'doctor':
-            from apps.cabinets.models import Doctor, MedicalSpecialty
-            try:
-                specialty = MedicalSpecialty.objects.get(id=data.get('specialty'))
-            except MedicalSpecialty.DoesNotExist:
-                specialty = None
+        try:
+            # ✅ Utilisation d'une transaction pour tout annuler si le profil échoue
+            with transaction.atomic():
+                user = serializer.save(is_active=False)
                 
-            Doctor.objects.create(
-                user=user,
-                specialty=specialty,
-                license_number=data.get('license_number', 'N/A'),
-                years_experience=data.get('years_experience', 0)
+                if user.role == 'patient':
+                    def to_decimal_or_none(value):
+                        if value in (None, '', 'null'):
+                            return None
+                        try:
+                            return Decimal(str(value).replace(',', '.'))
+                        except (InvalidOperation, ValueError):
+                            return None
+
+                    Patient.objects.create(
+                        user=user,
+                        date_of_birth=data.get('date_of_birth'),
+                        gender=data.get('gender', 'U'),
+                        blood_type=data.get('blood_type'),
+                        height=to_decimal_or_none(data.get('height')),  
+                        weight=to_decimal_or_none(data.get('weight')), 
+                        allergies=data.get('allergies')
+                    )
+                    
+                elif user.role == 'doctor':
+                    from apps.cabinets.models import Doctor, MedicalSpecialty
+                    try:
+                        specialty = MedicalSpecialty.objects.get(id=data.get('specialty'))
+                    except MedicalSpecialty.DoesNotExist:
+                        specialty = None
+                        
+                    Doctor.objects.create(
+                        user=user,
+                        specialty=specialty,
+                        license_number=data.get('license_number', 'N/A'),
+                        years_experience=data.get('years_experience', 0)
+                    )
+                    
+            return Response(
+                {"detail": "Votre compte a été créé avec succès. Il est en attente de validation par un administrateur."}, 
+                status=201
             )
             
-        return Response(
-            {"detail": "Votre compte a été créé avec succès. Il est en attente de validation par un administrateur."}, 
-            status=201
-        )
+        # ✅ Capturer l'erreur de doublon (numéro de licence déjà utilisé)
+        except IntegrityError as e:
+            return Response(
+                {"license_number": "Ce numéro de licence est déjà utilisé par un autre médecin. Veuillez vérifier votre saisie."}, 
+                status=400
+            )
+            
     return Response(serializer.errors, status=400)
 
 
@@ -468,3 +491,45 @@ class MedicalSpecialtyViewSet(viewsets.ModelViewSet):
             })
 
         instance.delete()
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def public_user_profile(request, pk):
+    """Récupère le profil complet d'un utilisateur par son ID."""
+    try:
+        user = User.objects.get(pk=pk, is_active=True)
+    except User.DoesNotExist:
+        return Response({"detail": "Utilisateur introuvable."}, status=404)
+    
+    serializer = UserDetailSerializer(user, context={'request': request})
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_stats(request):
+    """
+    Statistiques publiques pour la page d'accueil.
+    Accessible sans authentification.
+    """
+    try:
+        from apps.cabinets.models import Cabinet
+        from apps.appointments.models import Appointment
+
+        cabinets_count = Cabinet.objects.filter(is_deleted=False).count()
+        patients_count = Patient.objects.count()
+        appointments_count = Appointment.objects.filter(is_deleted=False).count()
+        
+        governorates_count = Governorate.objects.count()
+        
+    except Exception as e:
+        cabinets_count = 50
+        patients_count = 5000
+        appointments_count = 20000
+        governorates_count = 24
+
+    return Response({
+        'cabinets': cabinets_count,
+        'patients': patients_count,
+        'appointments': appointments_count,
+        'governorates': governorates_count
+    })

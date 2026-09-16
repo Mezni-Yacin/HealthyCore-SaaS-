@@ -251,7 +251,13 @@ class Patient(models.Model):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='U')
     
     blood_type = models.CharField(max_length=3, choices=BLOOD_TYPE_CHOICES, blank=True, null=True)
-    height = models.PositiveIntegerField(blank=True, null=True, help_text="Taille en cm")
+    height = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2, 
+        blank=True, 
+        null=True, 
+        help_text="Taille en mètres (ex: 1.80)"
+    )
     weight = models.DecimalField(
         max_digits=5, 
         decimal_places=2, 

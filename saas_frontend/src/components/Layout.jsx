@@ -1,199 +1,180 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, Link } from 'react-router-dom';
 import SidebarSelector from './sidebar/SidebarSelector';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
 export default function Layout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [offcanvasOpen, setOffcanvasOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // ── Gestion du Mode Sombre / Clair ──
+  const [darkMode, setDarkMode] = useState(() => {
+    // Récupérer la préférence sauvegardée, sinon celle du navigateur
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) return savedTheme === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
-  // ── Compteur messages non-lus ──
+  useEffect(() => {
+    // Appliquer le thème sur la balise <html> pour activer le Dark Mode de Bootstrap 5.3
+    document.documentElement.setAttribute('data-bs-theme', darkMode ? 'dark' : 'light');
+    // Sauvegarder le choix de l'utilisateur
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
+  // ── Compteur messages non-lus (Cabinet + Direct) ──
   useEffect(() => {
     const fetchUnread = async () => {
       try {
         const token = localStorage.getItem('access_token');
         if (!token || !user) return;
-        const res = await api.get('/messaging/conversations/');
-        const total = res.data.reduce((sum, c) => sum + (c.unread_count || 0), 0);
-        setUnreadCount(total);
+        
+        // ✅ FIX: Récupérer les conversations de cabinet ET directes en même temps
+        const [convRes, directConvRes] = await Promise.all([
+          api.get('/messaging/conversations/').catch(() => ({ data: [] })),
+          api.get('/messaging/direct-conversations/').catch(() => ({ data: [] }))
+        ]);
+
+        const cabinetUnread = (convRes.data || []).reduce((sum, c) => sum + (c.unread_count || 0), 0);
+        const directUnread = (directConvRes.data || []).reduce((sum, c) => sum + (c.unread_count || 0), 0);
+        
+        setUnreadCount(cabinetUnread + directUnread);
       } catch (err) {
-        // Pas connecté ou erreur silencieuse
+        // Silencieux
       }
     };
 
     fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
+    const interval = setInterval(fetchUnread, 30000); // 30 secondes
     return () => clearInterval(interval);
   }, [user]);
 
+  const roleLabel = user ? (user.role === 'super_admin' ? 'Super Admin' : user.role.charAt(0).toUpperCase() + user.role.slice(1)) : '';
+
   return (
-    <>
-      {/* ═══════ Navbar fixe en haut ═══════ */}
-      <nav className="navbar navbar-expand navbar-light bg-white shadow-sm fixed-top">
-        <div className="container-fluid px-3 px-md-4">
-          {/* Burger mobile */}
-          <button
-            className="navbar-toggler d-md-none me-3"
-            type="button"
-            onClick={() => setOffcanvasOpen(true)}
-            aria-label="Ouvrir le menu latéral"
-          >
-            <i className="bi bi-list fs-3"></i>
-          </button>
+    <div className="d-flex" style={{ backgroundColor: 'var(--bs-body-bg)', minHeight: '100vh' }}>
+      
+      {/* Variables CSS pour les tailles */}
+      <style>{`
+        :root {
+          --sidebar-width: 240px; 
+          --navbar-height: 56px;  
+        }
+        @media (min-width: 768px) { 
+          .main-content-wrapper { margin-left: var(--sidebar-width); } 
+        }
+      `}</style>
 
-          {/* Logo */}
-          <a className="navbar-brand fw-bold text-primary fs-4" href="/">
-            SaaS Médical
-          </a>
-
-          {/* Boutons + infos utilisateur à droite */}
-          <div className="ms-auto d-flex align-items-center gap-2">
-            {user && (
-              <>
-                {/* ── Bouton Messages avec badge ── */}
-                <NavLink
-                  to="/messages"
-                  className={({ isActive }) =>
-                    `btn btn-sm position-relative ${isActive ? 'btn-primary' : 'btn-outline-secondary'}`
-                  }
-                  style={{ fontWeight: 500 }}
-                >
-                  <i className="bi bi-chat-dots-fill" style={{ fontSize: '1rem' }}></i>
-                  <span className="d-none d-sm-inline ms-1">Messages</span>
-                  {unreadCount > 0 && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: unreadCount > 9 ? '-8px' : '-6px',
-                        right: unreadCount > 9 ? '-10px' : '-8px',
-                        minWidth: '18px',
-                        height: '18px',
-                        borderRadius: '50%',
-                        background: '#ef4444',
-                        color: '#fff',
-                        fontSize: '0.6rem',
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
-                        padding: '0 4px',
-                        lineHeight: 1,
-                        border: '2px solid #fff',
-                      }}
-                    >
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </NavLink>
-
-                {/* Nom + rôle */}
-                <div className="d-none d-sm-block text-end">
-                  <div className="fw-medium small">
-                    {user.first_name || user.username}
-                  </div>
-                  <div className="text-muted" style={{ fontSize: '0.8rem' }}>
-                    {user.role === 'super_admin'
-                      ? 'Super Administrateur'
-                      : user.role === 'lab_staff'
-                      ? 'Personnel de Laboratoire'
-                      : user.role === 'pharmacist'
-                      ? 'Pharmacien'
-                      : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </div>
-                </div>
-
-                {/* Avatar rond */}
-                {user.profile_picture ? (
-                  <img
-                    src={user.profile_picture}
-                    alt="Profil"
-                    className="rounded-circle"
-                    style={{ width: '38px', height: '38px', objectFit: 'cover', border: '1px solid #dee2e6' }}
-                  />
-                ) : (
-                  <div
-                    className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold"
-                    style={{ width: '38px', height: '38px' }}
-                  >
-                    {(user.first_name?.[0] || user.username?.[0] || '?').toUpperCase()}
-                  </div>
-                )}
-
-                {/* Bouton Mon profil */}
-                <NavLink
-                  to="/profile"
-                  className={({ isActive }) =>
-                    `btn btn-outline-primary btn-sm ${isActive ? 'active' : ''}`
-                  }
-                >
-                  <i className="bi bi-person me-1"></i>
-                  Mon profil
-                </NavLink>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {/* ═══════ Offcanvas mobile ═══════ */}
+      {/* ═══════ Sidebar Desktop (Fixe à gauche) ═══════ */}
       <div
-        className="offcanvas offcanvas-start bg-dark text-white"
-        tabIndex="-1"
-        id="sidebarOffcanvas"
-        aria-labelledby="sidebarOffcanvasLabel"
-        style={{ width: '280px' }}
+        className="d-none d-md-flex flex-column position-fixed top-0 start-0 h-100"
+        style={{ width: 'var(--sidebar-width)', zIndex: 1031, backgroundColor: darkMode ? '#0f172a' : '#1e293b' }}
       >
-        <div className="offcanvas-header border-bottom border-secondary">
-          <h5 className="offcanvas-title fw-bold" id="sidebarOffcanvasLabel">
-            Menu
-          </h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setOffcanvasOpen(false)}
-            aria-label="Fermer"
-          ></button>
+        <SidebarSelector />
+      </div>
+
+      {/* ═══════ Offcanvas Mobile ═══════ */}
+      <div
+        className={`offcanvas offcanvas-start ${offcanvasOpen ? 'show' : ''}`}
+        tabIndex="-1"
+        style={{ width: '280px', backgroundColor: darkMode ? '#0f172a' : '#1e293b', color: 'white' }}
+      >
+        <div className="offcanvas-header border-bottom border-secondary border-opacity-25">
+          <h5 className="offcanvas-title fw-bold text-white">Menu</h5>
+          <button type="button" className="btn-close btn-close-white" onClick={() => setOffcanvasOpen(false)}></button>
         </div>
         <div className="offcanvas-body p-0">
           <SidebarSelector />
         </div>
       </div>
+      {offcanvasOpen && <div className="offcanvas-backdrop fade show d-md-none" onClick={() => setOffcanvasOpen(false)}></div>}
 
-      {/* ═══════ Sidebar fixe à gauche (desktop) ═══════ */}
-      <div
-        className="d-none d-md-block bg-dark text-white position-fixed top-0 start-0 h-100 overflow-auto"
-        style={{ width: '260px', paddingTop: '70px' }}
-      >
-        <SidebarSelector />
-      </div>
+      {/* ═══════ Zone Principale (Droite) ═══════ */}
+      <div className="flex-grow-1">
+        <div className="main-content-wrapper">
+          
+          {/* ═══════ Navbar Top ═══════ */}
+          <nav className="navbar navbar-expand border-bottom sticky-top bg-body" style={{ height: 'var(--navbar-height)' }}>
+            <div className="container-fluid px-3 px-md-4">
+              
+              {/* Burger Mobile */}
+              <button
+                className="btn btn-link text-body p-0 d-md-none me-3"
+                type="button"
+                onClick={() => setOffcanvasOpen(true)}
+              >
+                <i className="bi bi-list fs-4"></i>
+              </button>
 
-      {/* ═══════ Contenu principal ═══════ */}
-      <main
-        className="flex-grow-1"
-        style={{
-          paddingTop: '70px',
-          marginLeft: '0',
-          paddingLeft: '260px',
-        }}
-      >
-        {/* Espace vide pour mobile */}
-        <div className="d-md-none" style={{ height: '70px' }}></div>
+              {/* Logo Mobile */}
+              <Link to="/" className="navbar-brand fw-bold text-primary d-md-none fs-5">
+                <i className="bi bi-heart-pulse-fill me-1"></i> HealthyCore
+              </Link>
 
-        <div className="container-fluid py-4 py-md-5">
-          <Outlet />
+              <div className="d-none d-md-block"></div>
+
+              {/* Droite : Bouton Thème, Messages + Profil */}
+              <div className="ms-auto d-flex align-items-center gap-3">
+                
+                {/* ── BOUTON DARK / LIGHT MODE ── */}
+                <button 
+                  onClick={() => setDarkMode(!darkMode)} 
+                  className="btn btn-link p-0 text-body-secondary" 
+                  title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+                  style={{ fontSize: '1.2rem', lineHeight: 1 }}
+                >
+                  <i className={`bi ${darkMode ? 'bi-sun-fill text-warning' : 'bi-moon-stars-fill'}`}></i>
+                </button>
+
+                {/* Bouton Messages */}
+                <NavLink to="/messages" className={({ isActive }) => `btn btn-icon position-relative ${isActive ? 'text-primary' : 'text-body-secondary'}`}>
+                  <i className="bi bi-chat-left-text-fill fs-5"></i>
+                  {unreadCount > 0 && (
+                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.6rem' }}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </NavLink>
+
+                <div className="vr d-none d-sm-block" style={{ height: '24px' }}></div>
+
+                {/* Menu Utilisateur */}
+                <div className="dropdown">
+                  <button className="btn d-flex align-items-center gap-2 p-1 ps-2 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{ borderRadius: '30px', backgroundColor: 'var(--bs-tertiary-bg)' }}>
+                    {user?.profile_picture ? (
+                      <img src={user.profile_picture} alt="Profil" className="rounded-circle" style={{ width: '30px', height: '30px', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style={{ width: '30px', height: '30px', fontSize: '0.75rem' }}>
+                        {(user?.first_name?.[0] || user?.username?.[0] || 'U').toUpperCase()}
+                      </div>
+                    )}
+                    <div className="text-start d-none d-sm-block me-2">
+                      <div className="fw-bold text-body" style={{ fontSize: '0.75rem', lineHeight: 1 }}>{user?.first_name || user?.username}</div>
+                      <small className="text-body-secondary" style={{ fontSize: '0.65rem' }}>{roleLabel}</small>
+                    </div>
+                    <i className="bi bi-chevron-down text-body-secondary me-2 d-none d-sm-block" style={{ fontSize: '0.65rem' }}></i>
+                  </button>
+                  <ul className="dropdown-menu dropdown-menu-end shadow border-0 mt-2" style={{ borderRadius: '12px' }}>
+                    <li><Link to="/profile" className="dropdown-item d-flex align-items-center gap-2 py-2"><i className="bi bi-person-circle text-primary"></i> Mon Profil</Link></li>
+                    <li><Link to="/settings" className="dropdown-item d-flex align-items-center gap-2 py-2"><i className="bi bi-gear text-secondary"></i> Paramètres</Link></li>
+                    <li><hr className="dropdown-divider" /></li>
+                    <li><button onClick={logout} className="dropdown-item d-flex align-items-center gap-2 py-2 text-danger"><i className="bi bi-box-arrow-right"></i> Déconnexion</button></li>
+                  </ul>
+                </div>
+
+              </div>
+            </div>
+          </nav>
+
+          {/* ═══════ Contenu des Pages ═══════ */}
+          <main className="py-4 px-3 px-md-4">
+            <Outlet />
+          </main>
+
         </div>
-      </main>
-
-      {/* ═══════ Overlay offcanvas ═══════ */}
-      {offcanvasOpen && (
-        <div
-          className="offcanvas-backdrop fade show d-md-none"
-          onClick={() => setOffcanvasOpen(false)}
-        ></div>
-      )}
-    </>
+      </div>
+    </div>
   );
 }

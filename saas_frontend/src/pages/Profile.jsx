@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom'; // ✅ IMPORT MANQUANT AJOUTÉ ICI
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -184,7 +185,7 @@ export default function Profile() {
                 <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2">{user.role_display || user.role}</span>
               </p>
               
-              <div className="text-start mt-4">
+              <div className="text-start mt-4 mb-4">
                 <div className="d-flex align-items-center mb-3 text-muted">
                   <i className="bi bi-envelope me-3 fs-5"></i>
                   <span className="small text-dark">{user.email || 'Non renseigné'}</span>
@@ -198,6 +199,13 @@ export default function Profile() {
                   <span className="small text-dark">{user.city_detail?.name || 'Non renseignée'}</span>
                 </div>
               </div>
+
+              {/* ✅ BOUTON MESSAGERIE */}
+              {!editMode && (
+                <Link to="/messages" className="btn btn-outline-primary w-100 rounded-3 fw-semibold">
+                  <i className="bi bi-chat-dots me-2"></i> Ma Messagerie
+                </Link>
+              )}
             </div>
           </div>
         </div>

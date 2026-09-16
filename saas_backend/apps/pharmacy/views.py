@@ -1,12 +1,15 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 from decimal import Decimal
 from datetime import date
+from .models import Order, OrderItem
+from .serializers import OrderSerializer, OrderCreateSerializer
+from django.shortcuts import get_object_or_404
 
 from .models import Pharmacy, Medication, PharmacyStock, Prescription, Dispensation, DispensationItem
 from .serializers import (
@@ -20,7 +23,8 @@ def _get_pharmacy(request):
     try:
         return Pharmacy.objects.get(owner=request.user, is_deleted=False)
     except Pharmacy.DoesNotExist:
-        raise PermissionDenied("Profil pharmacie introuvable.")
+        # ✅ FIX: On lève une erreur 404 au lieu de 403 pour que le frontend affiche le formulaire de création
+        raise NotFound("Profil pharmacie non configuré.")
 
 def _get_doctor(request):
     try:
@@ -38,14 +42,12 @@ def _get_patient(request):
 class PharmacistViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
-    # --- Villes ---
     @action(detail=False, methods=['get'], url_path='cities')
     def list_cities(self, request):
         from apps.users.models import City
         cities = City.objects.all().order_by('name')
         return Response([{'id': c.id, 'name': c.name} for c in cities])
 
-    # --- Création de pharmacie ---
     @action(detail=False, methods=['post'], url_path='create-pharmacy')
     def create_pharmacy(self, request):
         user = request.user
@@ -54,6 +56,7 @@ class PharmacistViewSet(viewsets.ViewSet):
         
         data = request.data.copy()
         phone = str(data.get('phone_number', ''))
+        # ✅ Fix du format du numéro de téléphone
         if phone and not phone.startswith('+'):
             clean_phone = ''.join(filter(str.isdigit, phone))
             if clean_phone.startswith('216'):
@@ -62,11 +65,11 @@ class PharmacistViewSet(viewsets.ViewSet):
                 data['phone_number'] = f'+216{clean_phone}'
 
         s = PharmacySerializer(data=data)
+        # ✅ is_valid(raise_exception=True) va renvoyer les erreurs de champs manquants
         s.is_valid(raise_exception=True)
         pharmacy = s.save(owner=user)
         return Response(PharmacySerializer(pharmacy).data, status=201)
 
-    # --- Pharmacie Profile ---
     @action(detail=False, methods=['get', 'patch'], url_path='my-pharmacy')
     def my_pharmacy(self, request):
         pharmacy = _get_pharmacy(request)
@@ -77,7 +80,6 @@ class PharmacistViewSet(viewsets.ViewSet):
             return Response(s.data)
         return Response(PharmacySerializer(pharmacy).data)
 
-    # --- Catalogue Médicaments (Global) ---
     @action(detail=False, methods=['get', 'post'], url_path='medications')
     def medications_manage(self, request):
         if request.method == 'POST':
@@ -92,7 +94,6 @@ class PharmacistViewSet(viewsets.ViewSet):
             qs = qs.filter(name__icontains=search)
         return Response(MedicationSerializer(qs, many=True).data)
 
-    # --- Stock Management ---
     @action(detail=False, methods=['get', 'post'], url_path='stock')
     def stock_manage(self, request):
         pharmacy = _get_pharmacy(request)
@@ -132,13 +133,11 @@ class PharmacistViewSet(viewsets.ViewSet):
             s.save()
             return Response(PharmacyStockSerializer(item).data)
 
-    # --- Ordonnances entrantes ---
     @action(detail=False, methods=['get'], url_path='prescriptions')
     def list_prescriptions(self, request):
         qs = Prescription.objects.filter(status__in=['pending', 'partially_dispensed']).select_related('patient__user', 'doctor__user').prefetch_related('items')
         return Response(PrescriptionSerializer(qs, many=True).data)
 
-    # --- Ventes (Dispensations) ---
     @action(detail=False, methods=['get'], url_path='sales')
     def list_sales(self, request):
         pharmacy = _get_pharmacy(request)
@@ -196,7 +195,6 @@ class PharmacistViewSet(viewsets.ViewSet):
 
         return Response(DispensationSerializer(dispensation).data, status=201)
 
-    # --- Dashboard Stats ---
     @action(detail=False, methods=['get'], url_path='stats')
     def stats(self, request):
         pharmacy = _get_pharmacy(request)
@@ -210,6 +208,29 @@ class PharmacistViewSet(viewsets.ViewSet):
             'pending_prescriptions': Prescription.objects.filter(status='pending').count(),
             'low_stock_items': PharmacyStock.objects.filter(pharmacy=pharmacy, quantity__lte=10).count(),
         })
+
+    @action(detail=False, methods=['get'], url_path='orders')
+    def list_orders(self, request):
+        pharmacy = _get_pharmacy(request)
+        qs = Order.objects.filter(pharmacy=pharmacy).exclude(status='completed').prefetch_related('items', 'patient__user').order_by('-created_at')
+        return Response(OrderSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='accept-order')
+    def accept_order(self, request, pk=None):
+        pharmacy = _get_pharmacy(request)
+        order = get_object_or_404(Order, pk=pk, pharmacy=pharmacy)
+        order.status = 'accepted'
+        order.save()
+        return Response({'detail': 'Commande acceptée. Le patient peut venir récupérer sa commande.'})
+
+    @action(detail=True, methods=['post'], url_path='reject-order')
+    def reject_order(self, request, pk=None):
+        pharmacy = _get_pharmacy(request)
+        order = get_object_or_404(Order, pk=pk, pharmacy=pharmacy)
+        order.status = 'rejected'
+        order.pharmacist_response = request.data.get('reason', 'Rupture de stock.')
+        order.save()
+        return Response({'detail': 'Commande refusée.'})
 
 # ══════════════════ MÉDECIN ══════════════════
 class DoctorPrescriptionViewSet(viewsets.ViewSet):
@@ -252,6 +273,52 @@ class PatientPharmacyViewSet(viewsets.ViewSet):
         qs = Dispensation.objects.filter(patient=patient).prefetch_related('items').order_by('-dispensation_date')
         return Response(DispensationSerializer(qs, many=True).data)
 
+    @action(detail=False, methods=['get'], url_path='my-orders')
+    def my_orders(self, request):
+        patient = _get_patient(request)
+        if not patient: return Response([])
+        qs = Order.objects.filter(patient=patient).prefetch_related('items').order_by('-created_at')
+        return Response(OrderSerializer(qs, many=True).data)
+
+    @action(detail=False, methods=['post'], url_path='create-order')
+    def create_order(self, request):
+        patient = _get_patient(request)
+        if not patient:
+            return Response({'detail': 'Profil patient introuvable.'}, status=400)
+        
+        s = OrderCreateSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        data = s.validated_data
+        
+        try:
+            pharmacy = Pharmacy.objects.get(id=data['pharmacy_id'], is_active=True, is_deleted=False)
+        except Pharmacy.DoesNotExist:
+            return Response({'detail': 'Pharmacie introuvable.'}, status=404)
+
+        with transaction.atomic():
+            order = Order.objects.create(
+                patient=patient,
+                pharmacy=pharmacy,
+                notes=data.get('notes')
+            )
+            for item_data in data['items']:
+                med_id = item_data.get('medication_id')
+                qty = int(item_data.get('quantity'))
+                if med_id and qty > 0:
+                    OrderItem.objects.create(order=order, medication_id=med_id, quantity=qty)
+        
+        return Response(OrderSerializer(order).data, status=201)
+
+    @action(detail=False, methods=['get'], url_path='medications')
+    def list_medications(self, request):
+        qs = Medication.objects.all().order_by('name')
+        return Response(MedicationSerializer(qs, many=True).data)
+
+    @action(detail=False, methods=['get'], url_path='pharmacies')
+    def list_pharmacies(self, request):
+        qs = Pharmacy.objects.filter(is_active=True, is_deleted=False).order_by('name')
+        return Response(PharmacySerializer(qs, many=True).data)
+
 # ══════════════════ ANNUAIRE PUBLIC ══════════════════
 class PublicPharmacyViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -269,7 +336,6 @@ class PublicPharmacyViewSet(viewsets.ViewSet):
             qs = qs.filter(is_on_duty=True)
         return Response(PharmacySerializer(qs, many=True).data)
 
-    # ✅ NOUVELLE MÉTHODE POUR VOIR LE DÉTAIL D'UNE PHARMACIE
     def retrieve(self, request, pk=None):
         try:
             pharma = Pharmacy.objects.get(pk=pk, is_active=True, is_deleted=False)

@@ -1,40 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 
-/**
- * ============================================================================
- *  CabinetsManagement.jsx — VERSION FINALE CORRIGÉE
- * ============================================================================
- *
- *  BUGS CORRIGÉS :
- *  1. ✅ api.get('/api/cabinets/') → double prefix /api/api/ → 404
- *     Toutes les URL cabinets changées de /api/cabinets/ à /cabinets/
- *     car le service api a déjà baseURL='.../api/'
- *
- *  2. ✅ openEditModal ne pouvait pas charger les villes (pas de governorate_id)
- *     fetchCitiesForGovernorate appelé avec le governorate_id du cabinet
- *
- *  3. ✅ Horaires d'ouverture : remplacé le textarea JSON brut par une
- *     interface conviviale jour par jour avec des toggles et inputs heure
- *
- *  Endpoints backend (votre api.js a déjà baseURL = /api/) :
- *    GET    /cabinets/                 → Liste (paginée)
- *    POST   /cabinets/                 → Créer
- *    GET    /cabinets/<id>/            → Détail
- *    PATCH  /cabinets/<id>/            → Modifier
- *    DELETE /cabinets/<id>/            → Soft delete
- *    POST   /cabinets/<id>/activate/   → Activer
- *    POST   /cabinets/<id>/deactivate/ → Désactiver
- *    GET    /cabinets/stats/           → Stats
- *    GET    /cabinets/doctors/         → Dropdown médecins
- *    GET    /cabinets/secretaries_list/ → Dropdown secrétaires
- *    GET    /cabinets/specialties/     → Dropdown spécialités
- *    GET    /users/cities/             → Dropdown villes
- *    GET    /users/governorates/       → Dropdown gouvernorats
- *
- * ============================================================================
- */
-
 // ── Jours de la semaine ──────────────────────────────────────────────────
 const DAYS = [
   { key: 'lundi', label: 'Lundi' },
@@ -46,7 +12,6 @@ const DAYS = [
   { key: 'dimanche', label: 'Dimanche' },
 ];
 
-// ── Horaires par défaut (vides) ──────────────────────────────────────────
 const emptyOpeningHours = () => {
   const hours = {};
   DAYS.forEach(d => { hours[d.key] = []; });
@@ -55,14 +20,12 @@ const emptyOpeningHours = () => {
 
 // ── Composant OpeningHoursEditor ────────────────────────────────────────
 function OpeningHoursEditor({ value, onChange, error }) {
-  // value = { lundi: ["08:00-12:00"], mardi: [], ... }
-
   const toggleDay = (dayKey) => {
     const updated = { ...value };
     if (updated[dayKey] && updated[dayKey].length > 0) {
-      updated[dayKey] = []; // Fermer le jour
+      updated[dayKey] = []; 
     } else {
-      updated[dayKey] = ['08:00-12:00']; // Ouvrir avec un créneau par défaut
+      updated[dayKey] = ['08:00-12:00']; 
     }
     onChange(updated);
   };
@@ -70,14 +33,12 @@ function OpeningHoursEditor({ value, onChange, error }) {
   const addSlot = (dayKey) => {
     const updated = { ...value };
     const slots = [...(updated[dayKey] || [])];
-    // Trouver le prochain créneau vide (après 12:00 par défaut)
     const lastSlot = slots.length > 0 ? slots[slots.length - 1] : null;
-    const newStart = lastSlot ? lastSlot.split('-')[1] : '08:00';
-    // Ajuster : si le dernier créneau finit à 12:00, commencer à 14:00
-    let defaultStart = '14:00';
+    let defaultStart = '08:00';
     if (lastSlot === '08:00-12:00') defaultStart = '14:00';
     else if (lastSlot === '14:00-18:00') defaultStart = '08:00';
-    else defaultStart = newStart;
+    else if (lastSlot) defaultStart = lastSlot.split('-')[1];
+    
     slots.push(`${defaultStart}-17:00`);
     updated[dayKey] = slots;
     onChange(updated);
@@ -117,7 +78,6 @@ function OpeningHoursEditor({ value, onChange, error }) {
 
   return (
     <div className={error ? 'is-invalid' : ''}>
-      {/* Bouton copier tous les jours */}
       <div className="d-flex justify-content-end mb-2">
         <div className="dropdown">
           <button className="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -135,7 +95,6 @@ function OpeningHoursEditor({ value, onChange, error }) {
         </div>
       </div>
 
-      {/* Liste des jours */}
       <div className="row g-2">
         {DAYS.map(d => {
           const slots = value[d.key] || [];
@@ -145,83 +104,44 @@ function OpeningHoursEditor({ value, onChange, error }) {
               <div className="card border">
                 <div className="card-body py-2 px-3">
                   <div className="d-flex align-items-center justify-content-between">
-                    {/* Toggle jour */}
                     <div className="form-check form-switch mb-0">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id={`day-${d.key}`}
-                        checked={isOpen}
-                        onChange={() => toggleDay(d.key)}
-                      />
-                      <label className="form-check-label fw-semibold" htmlFor={`day-${d.key}`}>
-                        {d.label}
-                      </label>
+                      <input className="form-check-input" type="checkbox" id={`day-${d.key}`} checked={isOpen} onChange={() => toggleDay(d.key)} />
+                      <label className="form-check-label fw-semibold" htmlFor={`day-${d.key}`}>{d.label}</label>
                     </div>
-
                     {isOpen && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => addSlot(d.key)}
-                      >
+                      <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => addSlot(d.key)}>
                         <i className="bi bi-plus me-1"></i> Créneau
                       </button>
                     )}
                   </div>
-
-                  {/* Créneaux horaires */}
                   {isOpen && (
                     <div className="mt-2">
                       {slots.map((slot, idx) => {
                         const [start, end] = slot.split('-');
                         return (
                           <div key={idx} className="d-flex align-items-center gap-2 mb-1">
-                            <input
-                              type="time"
-                              className="form-control form-control-sm"
-                              style={{ maxWidth: '120px' }}
-                              value={start}
-                              onChange={(e) => updateSlot(d.key, idx, 'start', e.target.value)}
-                            />
+                            <input type="time" className="form-control form-control-sm" style={{ maxWidth: '120px' }} value={start} onChange={(e) => updateSlot(d.key, idx, 'start', e.target.value)} />
                             <span className="text-muted fw-bold">—</span>
-                            <input
-                              type="time"
-                              className="form-control form-control-sm"
-                              style={{ maxWidth: '120px' }}
-                              value={end}
-                              onChange={(e) => updateSlot(d.key, idx, 'end', e.target.value)}
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => removeSlot(d.key, idx)}
-                              title="Supprimer ce créneau"
-                            >
-                              <i className="bi bi-x-lg"></i>
-                            </button>
+                            <input type="time" className="form-control form-control-sm" style={{ maxWidth: '120px' }} value={end} onChange={(e) => updateSlot(d.key, idx, 'end', e.target.value)} />
+                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => removeSlot(d.key, idx)} title="Supprimer"><i className="bi bi-x-lg"></i></button>
                           </div>
                         );
                       })}
                     </div>
                   )}
-
-                  {!isOpen && (
-                    <small className="text-muted">Fermé</small>
-                  )}
+                  {!isOpen && <small className="text-muted">Fermé</small>}
                 </div>
               </div>
             </div>
           );
         })}
       </div>
-
       {error && <div className="invalid-feedback d-block mt-1">{Array.isArray(error) ? error[0] : error}</div>}
     </div>
   );
 }
 
-// ── Modal réutilisable (large) ─────────────────────────────────────────────
+// ── Modal réutilisable ────────────────────────────────────────────────────
 function Modal({ show, title, onClose, children, onSubmit, submitLabel, submitDisabled, submitVariant, size }) {
   if (!show) return null;
   return (
@@ -247,7 +167,7 @@ function Modal({ show, title, onClose, children, onSubmit, submitLabel, submitDi
   );
 }
 
-// ── Pagination ─────────────────────────────────────────────────────────────
+// ── Pagination ────────────────────────────────────────────────────────────
 function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
   const getVisiblePages = () => {
@@ -277,7 +197,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
   );
 }
 
-// ── FormField helper ───────────────────────────────────────────────────────
+// ── FormField helper ──────────────────────────────────────────────────────
 function FormField({ label, required, error, children, helpText }) {
   return (
     <div className="mb-3">
@@ -293,7 +213,6 @@ function FormField({ label, required, error, children, helpText }) {
 
 // ── Composant principal ────────────────────────────────────────────────────
 export default function CabinetsManagement() {
-  // ── Données ────────────────────────────────────────────────────
   const [cabinets, setCabinets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -306,20 +225,20 @@ export default function CabinetsManagement() {
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 15;
 
-  // ── Dropdowns ──────────────────────────────────────────────────
+  // Dropdowns
   const [doctors, setDoctors] = useState([]);
   const [secretaries, setSecretaries] = useState([]);
   const [cities, setCities] = useState([]);
   const [governorates, setGovernorates] = useState([]);
   const [specialties, setSpecialties] = useState([]);
+  const [selectedGovernorate, setSelectedGovernorate] = useState(''); // ✅ Fix: Gérer le gouvernorat séparément
 
-  // ── Modal ──────────────────────────────────────────────────────
+  // Modal & Form
   const [showModal, setShowModal] = useState(false);
   const [editingCabinet, setEditingCabinet] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
 
-  // ── Formulaire ─────────────────────────────────────────────────
   const [form, setForm] = useState({
     name: '', owner: '', address: '', city: '',
     phone_number: '', email: '', website: '',
@@ -327,12 +246,11 @@ export default function CabinetsManagement() {
     cnam_affiliated: false, cnam_code: '', accreditation: '',
     appointment_duration: 30, timezone: 'Africa/Tunis',
     is_active: true,
-    opening_hours: emptyOpeningHours(),  // ✅ Objet, plus de JSON brut
+    opening_hours: emptyOpeningHours(),
     secretaries: [], specialties: [],
     logo: null, banner: null,
   });
 
-  // ── Message ────────────────────────────────────────────────────
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
 
@@ -344,13 +262,13 @@ export default function CabinetsManagement() {
 
   useEffect(() => { setCurrentPage(1); }, [search, filterOwner, filterCnam, filterActive, ordering]);
 
-  // ── Fetch dropdowns ────────────────────────────────────────────
+  // Fetch dropdowns (Médecins, Secrétaires, Spécialités, Gouvernorats)
   const fetchDropdowns = useCallback(async () => {
     try {
       const [docRes, secRes, specRes, govRes] = await Promise.all([
-        api.get('/cabinets/doctors/'),           // ✅ PAS de /api/
-        api.get('/cabinets/secretaries_list/'),   // ✅
-        api.get('/cabinets/specialties/'),        // ✅
+        api.get('/cabinets/doctors/'),
+        api.get('/cabinets/secretaries_list/'),
+        api.get('/cabinets/specialties/'),
         api.get('/users/governorates/', { params: { ordering: 'name', page_size: 1000 } }),
       ]);
       setDoctors(docRes.data);
@@ -364,7 +282,10 @@ export default function CabinetsManagement() {
 
   // Fetch cities based on governorate
   const fetchCitiesForGovernorate = useCallback(async (govId) => {
-    if (!govId) { setCities([]); return; }
+    if (!govId) { 
+      setCities([]); 
+      return; 
+    }
     try {
       const { data } = await api.get('/users/cities/', {
         params: { governorate: govId, ordering: 'name', page_size: 200 }
@@ -375,19 +296,9 @@ export default function CabinetsManagement() {
     }
   }, []);
 
-  // Fetch ALL cities (fallback)
-  const fetchAllCities = useCallback(async () => {
-    try {
-      const { data } = await api.get('/users/cities/', { params: { page_size: 500 } });
-      setCities(Array.isArray(data) ? data : data.results || []);
-    } catch (err) {
-      console.error('[Cabinets] Erreur fetch all cities:', err);
-    }
-  }, []);
-
   useEffect(() => { fetchDropdowns(); }, [fetchDropdowns]);
 
-  // ── Fetch cabinets (paginé) ────────────────────────────────────
+  // Fetch cabinets
   const fetchCabinets = useCallback(async () => {
     setLoading(true);
     try {
@@ -398,7 +309,7 @@ export default function CabinetsManagement() {
       if (filterActive) params.is_active = filterActive;
       if (ordering) params.ordering = ordering;
 
-      const { data } = await api.get('/cabinets/', { params });  // ✅ PAS de /api/
+      const { data } = await api.get('/cabinets/', { params });
       if (data.results) {
         setCabinets(data.results);
         setTotalCount(data.count);
@@ -418,7 +329,6 @@ export default function CabinetsManagement() {
 
   useEffect(() => { fetchCabinets(); }, [fetchCabinets]);
 
-  // ── Form helpers ───────────────────────────────────────────────
   const resetForm = () => {
     setForm({
       name: '', owner: '', address: '', city: '',
@@ -427,20 +337,20 @@ export default function CabinetsManagement() {
       cnam_affiliated: false, cnam_code: '', accreditation: '',
       appointment_duration: 30, timezone: 'Africa/Tunis',
       is_active: true,
-      opening_hours: emptyOpeningHours(),  // ✅ Objet vide par défaut
+      opening_hours: emptyOpeningHours(),
       secretaries: [], specialties: [],
       logo: null, banner: null,
     });
     setFormErrors({});
+    setSelectedGovernorate(''); // ✅ Reset governorate
+    setCities([]); // ✅ Reset cities
   };
 
   const updateForm = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const setFormFromCabinet = (cab) => {
-    // Convertir opening_hours JSON → objet pour l'éditeur
     let hours = emptyOpeningHours();
     if (cab.opening_hours && typeof cab.opening_hours === 'object') {
-      // Le backend renvoie déjà un objet, le fusionner avec les jours par défaut
       hours = { ...emptyOpeningHours(), ...cab.opening_hours };
     }
 
@@ -460,7 +370,7 @@ export default function CabinetsManagement() {
       appointment_duration: cab.appointment_duration || 30,
       timezone: cab.timezone || 'Africa/Tunis',
       is_active: cab.is_active ?? true,
-      opening_hours: hours,  // ✅ Objet directement
+      opening_hours: hours,
       secretaries: (cab.secretaries_list || []).map((s) => s.id),
       specialties: (cab.specialties_detail || []).map((s) => s.id),
       logo: null,
@@ -469,7 +379,6 @@ export default function CabinetsManagement() {
     setFormErrors({});
   };
 
-  // ── CRUD Handlers ──────────────────────────────────────────────
   const openCreateModal = () => {
     setEditingCabinet(null);
     resetForm();
@@ -478,17 +387,17 @@ export default function CabinetsManagement() {
 
   const openEditModal = async (cab) => {
     try {
-      // ✅ PAS de /api/ — le service api l'ajoute déjà
       const { data } = await api.get(`/cabinets/${cab.id}/`);
       setEditingCabinet(data);
       setFormFromCabinet(data);
 
-      // Charger les villes pour le gouvernorat du cabinet
+      // ✅ Fix: Charger correctement le gouvernorat et les villes
       if (data.city_detail && data.city_detail.governorate_id) {
+        setSelectedGovernorate(data.city_detail.governorate_id);
         await fetchCitiesForGovernorate(data.city_detail.governorate_id);
       } else {
-        // Fallback : charger toutes les villes
-        await fetchAllCities();
+        setSelectedGovernorate('');
+        setCities([]);
       }
       setShowModal(true);
     } catch (err) {
@@ -519,30 +428,18 @@ export default function CabinetsManagement() {
     formData.append('timezone', form.timezone);
     formData.append('is_active', form.is_active);
 
-    // ✅ Horaires d'ouverture — construire JSON depuis l'objet opening_hours
-    // Ne garder que les jours qui ont au moins un créneau
+    // Horaires d'ouverture
     const hoursPayload = {};
-    let hasHours = false;
     for (const dayKey of Object.keys(form.opening_hours)) {
       const slots = form.opening_hours[dayKey];
       if (Array.isArray(slots) && slots.length > 0) {
-        // Valider chaque créneau : ignorer ceux sans heure valide
-        const validSlots = slots.filter(s => {
-          if (typeof s !== 'string' || !s.includes('-')) return false;
-          const [start, end] = s.split('-');
-          return start && end && start.trim() && end.trim();
-        });
-        if (validSlots.length > 0) {
-          hoursPayload[dayKey] = validSlots;
-          hasHours = true;
-        }
+        const validSlots = slots.filter(s => typeof s === 'string' && s.includes('-') && s.split('-')[0].trim() && s.split('-')[1].trim());
+        if (validSlots.length > 0) hoursPayload[dayKey] = validSlots;
       }
     }
-    if (hasHours) {
-      formData.append('opening_hours', JSON.stringify(hoursPayload));
-    }
+    formData.append('opening_hours', JSON.stringify(hoursPayload)); // ✅ Envoie toujours un objet JSON valide
 
-    // Multi-select (M2M)
+    // M2M
     form.secretaries.forEach((id) => formData.append('secretaries', id));
     form.specialties.forEach((id) => formData.append('specialties', id));
 
@@ -552,12 +449,12 @@ export default function CabinetsManagement() {
 
     try {
       if (editingCabinet) {
-        await api.patch(`/cabinets/${editingCabinet.id}/`, formData, {    // ✅ PAS de /api/
+        await api.patch(`/cabinets/${editingCabinet.id}/`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         setMessage(`Cabinet "${form.name}" modifié avec succès.`);
       } else {
-        await api.post('/cabinets/', formData, {    // ✅ PAS de /api/
+        await api.post('/cabinets/', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         setMessage(`Cabinet "${form.name}" créé avec succès.`);
@@ -582,7 +479,7 @@ export default function CabinetsManagement() {
   const handleDelete = async (cab) => {
     if (!window.confirm(`Supprimer le cabinet "${cab.name}" ? Le cabinet sera désactivé.`)) return;
     try {
-      await api.delete(`/cabinets/${cab.id}/`);  // ✅ PAS de /api/
+      await api.delete(`/cabinets/${cab.id}/`);
       setMessage(`Cabinet "${cab.name}" supprimé.`);
       setMessageType('success');
       fetchCabinets();
@@ -595,7 +492,7 @@ export default function CabinetsManagement() {
   const handleToggleActive = async (cab) => {
     const action = cab.is_active ? 'deactivate' : 'activate';
     try {
-      await api.post(`/cabinets/${cab.id}/${action}/`);  // ✅ PAS de /api/
+      await api.post(`/cabinets/${cab.id}/${action}/`);
       setMessage(`Cabinet "${cab.name}" ${cab.is_active ? 'désactivé' : 'activé'}.`);
       setMessageType('success');
       fetchCabinets();
@@ -605,7 +502,6 @@ export default function CabinetsManagement() {
     }
   };
 
-  // ── Helpers ────────────────────────────────────────────────────
   const handleOrderToggle = (field) => setOrdering((prev) => (prev === field ? `-${field}` : field));
   const SortIcon = ({ field }) => ordering === field ? ' ▲' : ordering === `-${field}` ? ' ▼' : ' ↕';
   const getOrderLabel = () => ({
@@ -615,10 +511,8 @@ export default function CabinetsManagement() {
     'owner__last_name': 'Médecin A-Z', '-owner__last_name': 'Médecin Z-A',
   })[ordering] || 'Plus récents';
 
-  // ── RENDER ─────────────────────────────────────────────────────
   return (
     <div className="container-fluid py-4">
-      {/* En-tête */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
           <h2 className="fw-bold mb-1">Gestion des Cabinets Médicaux</h2>
@@ -629,7 +523,6 @@ export default function CabinetsManagement() {
         </button>
       </div>
 
-      {/* Message */}
       {message && (
         <div className={`alert alert-${messageType} alert-dismissible fade show`} role="alert">
           {message}
@@ -637,7 +530,6 @@ export default function CabinetsManagement() {
         </div>
       )}
 
-      {/* Filtres */}
       <div className="card shadow-sm border-0 mb-4">
         <div className="card-body">
           <div className="row g-2 align-items-center">
@@ -675,7 +567,6 @@ export default function CabinetsManagement() {
         </div>
       </div>
 
-      {/* Tableau */}
       <div className="card shadow-sm border-0">
         <div className="card-body p-0">
           {loading ? (
@@ -746,11 +637,7 @@ export default function CabinetsManagement() {
                             <button className="btn btn-outline-primary" onClick={() => openEditModal(cab)} title="Modifier">
                               <i className="bi bi-pencil"></i>
                             </button>
-                            <button
-                              className={`btn ${cab.is_active ? 'btn-outline-warning' : 'btn-outline-success'}`}
-                              onClick={() => handleToggleActive(cab)}
-                              title={cab.is_active ? 'Désactiver' : 'Activer'}
-                            >
+                            <button className={`btn ${cab.is_active ? 'btn-outline-warning' : 'btn-outline-success'}`} onClick={() => handleToggleActive(cab)} title={cab.is_active ? 'Désactiver' : 'Activer'}>
                               <i className={`bi ${cab.is_active ? 'bi-pause-circle' : 'bi-play-circle'}`}></i>
                             </button>
                             <button className="btn btn-outline-danger" onClick={() => handleDelete(cab)} title="Supprimer">
@@ -787,21 +674,16 @@ export default function CabinetsManagement() {
         submitVariant={editingCabinet ? 'btn-warning' : 'btn-success'}
         size="modal-xl"
       >
-        {/* ── Section 1 : Informations générales ──────────────── */}
-        <h6 className="text-primary border-bottom pb-2 mb-3">
-          <i className="bi bi-info-circle me-1"></i> Informations générales
-        </h6>
+        <h6 className="text-primary border-bottom pb-2 mb-3"><i className="bi bi-info-circle me-1"></i> Informations générales</h6>
         <div className="row g-3">
           <div className="col-md-6">
             <FormField label="Nom du cabinet" required error={formErrors.name}>
-              <input type="text" className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
-                value={form.name} onChange={(e) => updateForm('name', e.target.value)} placeholder="Ex: Clinique El Manar" />
+              <input type="text" className={`form-control ${formErrors.name ? 'is-invalid' : ''}`} value={form.name} onChange={(e) => updateForm('name', e.target.value)} placeholder="Ex: Clinique El Manar" />
             </FormField>
           </div>
           <div className="col-md-6">
             <FormField label="Médecin propriétaire" required error={formErrors.owner}>
-              <select className={`form-select ${formErrors.owner ? 'is-invalid' : ''}`}
-                value={form.owner} onChange={(e) => updateForm('owner', e.target.value)}>
+              <select className={`form-select ${formErrors.owner ? 'is-invalid' : ''}`} value={form.owner} onChange={(e) => updateForm('owner', e.target.value)}>
                 <option value="">— Sélectionner —</option>
                 {doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name} ({d.email})</option>)}
               </select>
@@ -809,172 +691,153 @@ export default function CabinetsManagement() {
           </div>
           <div className="col-md-12">
             <FormField label="Adresse" required error={formErrors.address}>
-              <textarea className={`form-control ${formErrors.address ? 'is-invalid' : ''}`}
-                value={form.address} onChange={(e) => updateForm('address', e.target.value)} rows="2" placeholder="Adresse complète" />
+              <textarea className={`form-control ${formErrors.address ? 'is-invalid' : ''}`} value={form.address} onChange={(e) => updateForm('address', e.target.value)} rows="2" placeholder="Adresse complète" />
             </FormField>
           </div>
-          <div className="col-md-4">
-            <FormField label="Ville" required error={formErrors.city}>
-              <select className={`form-select ${formErrors.city ? 'is-invalid' : ''}`}
-                value={form.city} onChange={(e) => updateForm('city', e.target.value)}>
+          
+          {/* ✅ Fix: Gouvernorat et Ville toujours visibles et bien liés */}
+          <div className="col-md-6">
+            <FormField label="Gouvernorat" required>
+              <select 
+                className="form-select" 
+                value={selectedGovernorate} 
+                onChange={(e) => {
+                  setSelectedGovernorate(e.target.value);
+                  fetchCitiesForGovernorate(e.target.value);
+                  updateForm('city', ''); // Reset ville quand on change de gouvernorat
+                }}
+              >
                 <option value="">— Sélectionner —</option>
-                {cities.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.governorate_name || ''})</option>)}
+                {governorates.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
-              {cities.length === 0 && (
-                <div className="form-text">
-                  <small>Sélectionnez d'abord un gouvernorat ci-dessous</small>
-                  <select className="form-select form-select-sm mt-1" onChange={(e) => fetchCitiesForGovernorate(e.target.value)}>
-                    <option value="">— Choisir gouvernorat —</option>
-                    {governorates.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                  </select>
-                </div>
-              )}
             </FormField>
           </div>
+          <div className="col-md-6">
+            <FormField label="Ville" required error={formErrors.city}>
+              <select 
+                className={`form-select ${formErrors.city ? 'is-invalid' : ''}`} 
+                value={form.city} 
+                onChange={(e) => updateForm('city', e.target.value)}
+                disabled={!selectedGovernorate}
+              >
+                <option value="">— Sélectionner —</option>
+                {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {!selectedGovernorate && <div className="form-text">Sélectionnez d'abord un gouvernorat</div>}
+            </FormField>
+          </div>
+
           <div className="col-md-4">
             <FormField label="Téléphone" required error={formErrors.phone_number}>
-              <input type="tel" className={`form-control ${formErrors.phone_number ? 'is-invalid' : ''}`}
-                value={form.phone_number} onChange={(e) => updateForm('phone_number', e.target.value)} placeholder="+216 XX XXX XXX" />
+              <input type="tel" className={`form-control ${formErrors.phone_number ? 'is-invalid' : ''}`} value={form.phone_number} onChange={(e) => updateForm('phone_number', e.target.value)} placeholder="+216 XX XXX XXX" />
             </FormField>
           </div>
           <div className="col-md-4">
             <FormField label="Email" required error={formErrors.email}>
-              <input type="email" className={`form-control ${formErrors.email ? 'is-invalid' : ''}`}
-                value={form.email} onChange={(e) => updateForm('email', e.target.value)} placeholder="contact@cabinet.tn" />
+              <input type="email" className={`form-control ${formErrors.email ? 'is-invalid' : ''}`} value={form.email} onChange={(e) => updateForm('email', e.target.value)} placeholder="contact@cabinet.tn" />
             </FormField>
           </div>
-          <div className="col-md-6">
+          <div className="col-md-4">
             <FormField label="Site web" error={formErrors.website}>
-              <input type="url" className={`form-control ${formErrors.website ? 'is-invalid' : ''}`}
-                value={form.website} onChange={(e) => updateForm('website', e.target.value)} placeholder="https://..." />
+              <input type="url" className={`form-control ${formErrors.website ? 'is-invalid' : ''}`} value={form.website} onChange={(e) => updateForm('website', e.target.value)} placeholder="https://..." />
             </FormField>
           </div>
           <div className="col-md-6">
-            <FormField label="Spécialités" error={formErrors.specialties}>
-              <select multiple className={`form-control ${formErrors.specialties ? 'is-invalid' : ''}`} style={{ height: '80px' }}
-                value={form.specialties} onChange={(e) => updateForm('specialties', Array.from(e.target.selectedOptions, (o) => o.value))}>
+            <FormField label="Spécialités" error={formErrors.specialties} helpText="Maintenez Ctrl pour sélectionner plusieurs">
+              <select multiple className={`form-control ${formErrors.specialties ? 'is-invalid' : ''}`} style={{ height: '100px' }} value={form.specialties} onChange={(e) => updateForm('specialties', Array.from(e.target.selectedOptions, (o) => o.value))}>
                 {specialties.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
               </select>
-              <div className="form-text">Maintenez Ctrl pour sélectionner plusieurs</div>
             </FormField>
           </div>
           <div className="col-md-3">
             <FormField label="Latitude" error={formErrors.latitude} helpText="-90 à 90">
-              <input type="number" step="0.000001" className={`form-control ${formErrors.latitude ? 'is-invalid' : ''}`}
-                value={form.latitude} onChange={(e) => updateForm('latitude', e.target.value)} placeholder="36.8065" />
+              <input type="number" step="0.000001" className={`form-control ${formErrors.latitude ? 'is-invalid' : ''}`} value={form.latitude} onChange={(e) => updateForm('latitude', e.target.value)} placeholder="36.8065" />
             </FormField>
           </div>
           <div className="col-md-3">
             <FormField label="Longitude" error={formErrors.longitude} helpText="-180 à 180">
-              <input type="number" step="0.000001" className={`form-control ${formErrors.longitude ? 'is-invalid' : ''}`}
-                value={form.longitude} onChange={(e) => updateForm('longitude', e.target.value)} placeholder="10.1815" />
+              <input type="number" step="0.000001" className={`form-control ${formErrors.longitude ? 'is-invalid' : ''}`} value={form.longitude} onChange={(e) => updateForm('longitude', e.target.value)} placeholder="10.1815" />
             </FormField>
           </div>
         </div>
 
-        {/* ── Section 2 : Informations médicales ─────────────── */}
-        <h6 className="text-info border-bottom pb-2 mt-4 mb-3">
-          <i className="bi bi-heart-pulse me-1"></i> Informations médicales
-        </h6>
+        <h6 className="text-info border-bottom pb-2 mt-4 mb-3"><i className="bi bi-heart-pulse me-1"></i> Informations médicales</h6>
         <div className="row g-3">
           <div className="col-md-4">
             <div className="form-check form-switch mt-4">
-              <input className="form-check-input" type="checkbox" id="cnam_affiliated"
-                checked={form.cnam_affiliated} onChange={(e) => updateForm('cnam_affiliated', e.target.checked)} />
+              <input className="form-check-input" type="checkbox" id="cnam_affiliated" checked={form.cnam_affiliated} onChange={(e) => updateForm('cnam_affiliated', e.target.checked)} />
               <label className="form-check-label fw-semibold" htmlFor="cnam_affiliated">Affilié CNAM</label>
             </div>
           </div>
           <div className="col-md-4">
             <FormField label="Code CNAM" error={formErrors.cnam_code}>
-              <input type="text" className={`form-control ${formErrors.cnam_code ? 'is-invalid' : ''}`}
-                value={form.cnam_code} onChange={(e) => updateForm('cnam_code', e.target.value)} />
+              <input type="text" className={`form-control ${formErrors.cnam_code ? 'is-invalid' : ''}`} value={form.cnam_code} onChange={(e) => updateForm('cnam_code', e.target.value)} />
             </FormField>
           </div>
           <div className="col-md-4">
             <FormField label="Durée consultation (min)" error={formErrors.appointment_duration} helpText="5 à 480 min">
-              <input type="number" min="5" max="480" className={`form-control ${formErrors.appointment_duration ? 'is-invalid' : ''}`}
-                value={form.appointment_duration} onChange={(e) => updateForm('appointment_duration', e.target.value)} />
+              <input type="number" min="5" max="480" className={`form-control ${formErrors.appointment_duration ? 'is-invalid' : ''}`} value={form.appointment_duration} onChange={(e) => updateForm('appointment_duration', e.target.value)} />
             </FormField>
           </div>
           <div className="col-md-6">
             <FormField label="Accréditation" error={formErrors.accreditation}>
-              <textarea className={`form-control ${formErrors.accreditation ? 'is-invalid' : ''}`}
-                value={form.accreditation} onChange={(e) => updateForm('accreditation', e.target.value)} rows="2" placeholder="Accréditations du cabinet" />
+              <textarea className={`form-control ${formErrors.accreditation ? 'is-invalid' : ''}`} value={form.accreditation} onChange={(e) => updateForm('accreditation', e.target.value)} rows="2" placeholder="Accréditations du cabinet" />
             </FormField>
           </div>
           <div className="col-md-6">
             <FormField label="Secrétaires" error={formErrors.secretaries} helpText="Ctrl+clic pour sélectionner plusieurs">
-              <select multiple className={`form-control ${formErrors.secretaries ? 'is-invalid' : ''}`} style={{ height: '80px' }}
-                value={form.secretaries} onChange={(e) => updateForm('secretaries', Array.from(e.target.selectedOptions, (o) => o.value))}>
+              <select multiple className={`form-control ${formErrors.secretaries ? 'is-invalid' : ''}`} style={{ height: '100px' }} value={form.secretaries} onChange={(e) => updateForm('secretaries', Array.from(e.target.selectedOptions, (o) => o.value))}>
                 {secretaries.map((s) => <option key={s.id} value={s.id}>{s.full_name} ({s.email})</option>)}
               </select>
             </FormField>
           </div>
         </div>
 
-        {/* ── Section 3 : Horaires d'ouverture (UI conviviale) ── */}
-        <h6 className="text-success border-bottom pb-2 mt-4 mb-3">
-          <i className="bi bi-clock me-1"></i> Horaires d'ouverture
-        </h6>
+        <h6 className="text-success border-bottom pb-2 mt-4 mb-3"><i className="bi bi-clock me-1"></i> Horaires d'ouverture</h6>
         <div className="row g-3">
           <div className="col-md-9">
-            <OpeningHoursEditor
-              value={form.opening_hours}
-              onChange={(hours) => updateForm('opening_hours', hours)}
-              error={formErrors.opening_hours}
-            />
+            <OpeningHoursEditor value={form.opening_hours} onChange={(hours) => updateForm('opening_hours', hours)} error={formErrors.opening_hours} />
           </div>
           <div className="col-md-3">
             <FormField label="Fuseau horaire" error={formErrors.timezone}>
-              <select className={`form-select ${formErrors.timezone ? 'is-invalid' : ''}`}
-                value={form.timezone} onChange={(e) => updateForm('timezone', e.target.value)}>
+              <select className={`form-select ${formErrors.timezone ? 'is-invalid' : ''}`} value={form.timezone} onChange={(e) => updateForm('timezone', e.target.value)}>
                 <option value="Africa/Tunis">Africa/Tunis</option>
               </select>
             </FormField>
             <div className="mt-4">
               <small className="text-muted d-block mb-2">
                 <i className="bi bi-info-circle me-1"></i>
-                Activez le toggle pour ouvrir un jour, puis ajoutez des créneaux horaires.
+                Activez le toggle pour ouvrir un jour, puis ajoutez des créneaux.
               </small>
             </div>
           </div>
         </div>
 
-        {/* ── Section 4 : Médias ─────────────────────────────── */}
-        <h6 className="text-warning border-bottom pb-2 mt-4 mb-3">
-          <i className="bi bi-image me-1"></i> Médias
-        </h6>
+        <h6 className="text-warning border-bottom pb-2 mt-4 mb-3"><i className="bi bi-image me-1"></i> Médias</h6>
         <div className="row g-3">
           <div className="col-md-6">
             <FormField label="Logo du cabinet" error={formErrors.logo}>
-              <input type="file" accept="image/png,image/jpeg,image/jpg"
-                className={`form-control ${formErrors.logo ? 'is-invalid' : ''}`}
-                onChange={(e) => updateForm('logo', e.target.files[0] || null)} />
+              <input type="file" accept="image/png,image/jpeg,image/jpg" className={`form-control ${formErrors.logo ? 'is-invalid' : ''}`} onChange={(e) => updateForm('logo', e.target.files[0] || null)} />
               <div className="form-text">JPG, PNG. {form.logo && <span className="text-success">Fichier sélectionné</span>}</div>
             </FormField>
           </div>
           <div className="col-md-6">
             <FormField label="Bannière" error={formErrors.banner}>
-              <input type="file" accept="image/png,image/jpeg,image/jpg"
-                className={`form-control ${formErrors.banner ? 'is-invalid' : ''}`}
-                onChange={(e) => updateForm('banner', e.target.files[0] || null)} />
+              <input type="file" accept="image/png,image/jpeg,image/jpg" className={`form-control ${formErrors.banner ? 'is-invalid' : ''}`} onChange={(e) => updateForm('banner', e.target.files[0] || null)} />
               <div className="form-text">JPG, PNG. {form.banner && <span className="text-success">Fichier sélectionné</span>}</div>
             </FormField>
           </div>
         </div>
 
-        {/* ── Section 5 : État ───────────────────────────────── */}
         <div className="row g-3 mt-2">
           <div className="col-md-6">
             <div className="form-check form-switch">
-              <input className="form-check-input" type="checkbox" id="is_active"
-                checked={form.is_active} onChange={(e) => updateForm('is_active', e.target.checked)} />
+              <input className="form-check-input" type="checkbox" id="is_active" checked={form.is_active} onChange={(e) => updateForm('is_active', e.target.checked)} />
               <label className="form-check-label fw-semibold" htmlFor="is_active">Cabinet actif</label>
             </div>
           </div>
         </div>
 
-        {/* Erreurs globales */}
         {formErrors.detail && <div className="alert alert-danger mt-3">{formErrors.detail}</div>}
         {formErrors.non_field_errors && (
           <div className="alert alert-danger mt-3">

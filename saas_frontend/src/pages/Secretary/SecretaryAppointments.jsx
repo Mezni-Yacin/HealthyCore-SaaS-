@@ -129,7 +129,8 @@ const SecretaryAppointments = () => {
       if (filters.date_to) params.date_to = filters.date_to;
       if (filters.consultation_type) params.consultation_type = filters.consultation_type;
 
-      const res = await api.get('/appointments/secretary/records/', { params });
+      // ✅ FIX: URL corrigée (sans records/)
+      const res = await api.get('/appointments/secretary/', { params });
       const data = res.data;
 
       // Support both paginated and non-paginated responses
@@ -154,7 +155,8 @@ const SecretaryAppointments = () => {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const res = await api.get('/appointments/secretary/records/stats/');
+      // ✅ FIX: URL corrigée
+      const res = await api.get('/appointments/secretary/stats/');
       setStats(res.data);
     } catch (err) {
       console.error('Error fetching stats:', err);
@@ -165,10 +167,11 @@ const SecretaryAppointments = () => {
 
   const fetchDropdowns = useCallback(async () => {
     try {
+      // ✅ FIX: URLs corrigées
       const [doctorsRes, patientsRes, cabinetsRes] = await Promise.all([
-        api.get('/appointments/secretary/records/doctors-dropdown/'),
-        api.get('/appointments/secretary/records/patients-dropdown/'),
-        api.get('/appointments/secretary/records/cabinets-dropdown/'),
+        api.get('/appointments/secretary/doctors-dropdown/'),
+        api.get('/appointments/secretary/patients-dropdown/'),
+        api.get('/appointments/secretary/cabinets-dropdown/'),
       ]);
       setDoctors(doctorsRes.data || []);
       setPatients(patientsRes.data || []);
@@ -291,7 +294,8 @@ const SecretaryAppointments = () => {
         notes: createForm.notes || undefined,
       };
 
-      await api.post('/appointments/secretary/records/', payload);
+      // ✅ FIX: URL corrigée
+      await api.post('/appointments/secretary/', payload);
       setShowCreateModal(false);
       fetchAppointments();
       fetchStats();

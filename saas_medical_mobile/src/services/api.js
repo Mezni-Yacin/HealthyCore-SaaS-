@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 const getBaseUrl = () => {
-  const LOCAL_IP = '192.168.1.177';   // ← Change si besoin
+  const LOCAL_IP = '192.168.100.12';   // ← Change si besoin
 
   if (Platform.OS === 'web') {
     return 'http://127.0.0.1:8000/api/';

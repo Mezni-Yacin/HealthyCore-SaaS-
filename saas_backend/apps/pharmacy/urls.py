@@ -13,6 +13,11 @@ urlpatterns = [
     path('pharmacist/sales/', PharmacistViewSet.as_view({'get': 'list_sales'})),
     path('pharmacist/create-sale/', PharmacistViewSet.as_view({'post': 'create_sale'})),
     path('pharmacist/stats/', PharmacistViewSet.as_view({'get': 'stats'})),
+    
+    # COMMANDES PHARMACIEN
+    path('pharmacist/orders/', PharmacistViewSet.as_view({'get': 'list_orders'})),
+    path('pharmacist/orders/<int:pk>/accept/', PharmacistViewSet.as_view({'post': 'accept_order'})),
+    path('pharmacist/orders/<int:pk>/reject/', PharmacistViewSet.as_view({'post': 'reject_order'})),
 
     # ====================== MÉDECIN ======================
     path('doctor/prescriptions/', DoctorPrescriptionViewSet.as_view({'get': 'list', 'post': 'create'})),
@@ -22,7 +27,13 @@ urlpatterns = [
     path('patient/my-prescriptions/', PatientPharmacyViewSet.as_view({'get': 'my_prescriptions'})),
     path('patient/my-purchases/', PatientPharmacyViewSet.as_view({'get': 'my_purchases'})),
     
+    # COMMANDES PATIENT
+    path('patient/my-orders/', PatientPharmacyViewSet.as_view({'get': 'my_orders'})),
+    path('patient/create-order/', PatientPharmacyViewSet.as_view({'post': 'create_order'})),
+    path('patient/medications/', PatientPharmacyViewSet.as_view({'get': 'list_medications'})),
+    path('patient/pharmacies/', PatientPharmacyViewSet.as_view({'get': 'list_pharmacies'})),
+
     # ====================== ANNUAIRE PUBLIC ======================
     path('public/pharmacies/', PublicPharmacyViewSet.as_view({'get': 'list'})),
-    path('public/pharmacies/<int:pk>/', PublicPharmacyViewSet.as_view({'get': 'retrieve'})), # ✅ AJOUTE CETTE LIGNE
+    path('public/pharmacies/<int:pk>/', PublicPharmacyViewSet.as_view({'get': 'retrieve'})),
 ]

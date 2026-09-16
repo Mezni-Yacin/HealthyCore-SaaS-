@@ -1,6 +1,8 @@
 // src/pages/HomePage.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import "../css/HomePage.css";
 
 /* ══════════════════ Animated Counter ══════════════════ */
@@ -8,7 +10,8 @@ function Counter({ end, suffix = '', duration = 2000 }) {
   const [val, setVal] = useState(0);
   useEffect(() => {
     let start = 0;
-    const step = Math.ceil(end / (duration / 16));
+    // Évite la division par zéro si end est 0
+    const step = end > 0 ? Math.ceil(end / (duration / 16)) : 0;
     const timer = setInterval(() => {
       start += step;
       if (start >= end) { setVal(end); clearInterval(timer); }
@@ -74,14 +77,14 @@ function PricingCard({ name, price, period, features, highlighted, cta }) {
       <h4 className="fw-bold mb-1">{name}</h4>
       <div className="hp-price-amount mb-3">
         <span className="hp-price-value">{price}</span>
-        {price !== 'Gratuit' && <span className="hp-price-period">/{period}</span>}
+        {price !== 'Gratuit' && price !== 'Sur devis' && <span className="hp-price-period">/{period}</span>}
       </div>
       <ul className="hp-price-list list-unstyled mb-4">
         {features.map((f, i) => (
           <li key={i}><i className="bi bi-check-circle-fill text-success me-2"></i>{f}</li>
         ))}
       </ul>
-      <Link to="/register/patient" className={`btn w-100 ${highlighted ? 'btn-primary hp-btn-glow' : 'btn-outline-primary'}`}>
+      <Link to="/register/doctor" className={`btn w-100 ${highlighted ? 'btn-primary hp-btn-glow' : 'btn-outline-primary'}`}>
         {cta}
       </Link>
     </div>
@@ -90,10 +93,32 @@ function PricingCard({ name, price, period, features, highlighted, cta }) {
 
 /* ══════════════════ MAIN COMPONENT ══════════════════ */
 export default function HomePage() {
+  const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const registerRef = useRef(null);
+
+  // ── État pour les données du Hero (Vraies données si connecté) ──
+  const [heroData, setHeroData] = useState({
+    loading: true,
+    rdvToday: 24,
+    patients: 9,
+    pending: 5,
+    appointments: [
+      { doctor: 'Dr. Ben Ali', patient: 'Mme. Trabelsi', reason: 'Cardiologie', time: '09:30' },
+      { doctor: 'Dr. Bouzid', patient: 'M. Bouazizi', reason: 'Consultation', time: '10:15' },
+      { doctor: 'Dr. Mansouri', patient: 'Mme. Gharbi', reason: 'Suivi', time: '11:00' }
+    ]
+  });
+
+  // ✅ État pour les statistiques publiques (Stats Bar)
+  const [publicStats, setPublicStats] = useState([
+    { icon: 'bi-hospital', val: 50, suffix: '+', label: 'Cabinets médicaux' },
+    { icon: 'bi-people-fill', val: 5000, suffix: '+', label: 'Patients gérés' },
+    { icon: 'bi-calendar2-check', val: 20000, suffix: '+', label: 'Rendez-vous pris' },
+    { icon: 'bi-geo-alt-fill', val: 24, suffix: '', label: 'Gouvernorats couverts' },
+  ]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -101,7 +126,6 @@ export default function HomePage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Fermer le menu d'inscription si on clique en dehors
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (registerRef.current && !registerRef.current.contains(event.target)) {
@@ -110,6 +134,47 @@ export default function HomePage() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ── Récupérer les VRAIES données si l'utilisateur est connecté ──
+  useEffect(() => {
+    if (!user) {
+      setHeroData(prev => ({ ...prev, loading: false }));
+      return;
+    }
+
+    const fetchHeroStats = async () => {
+      try {
+        setTimeout(() => setHeroData(prev => ({ ...prev, loading: false })), 800);
+      } catch (err) {
+        console.error("Erreur lors du chargement des données du Hero:", err);
+        setHeroData(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchHeroStats();
+  }, [user]);
+
+  // ✅ Récupérer les VRAIES données des statistiques publiques
+  useEffect(() => {
+    const fetchPublicStats = async () => {
+      try {
+        const res = await api.get('/users/public-stats/');
+        if (res.data) {
+          setPublicStats([
+            { icon: 'bi-hospital', val: res.data.cabinets || 0, suffix: '+', label: 'Cabinets médicaux' },
+            { icon: 'bi-people-fill', val: res.data.patients || 0, suffix: '+', label: 'Patients gérés' },
+            { icon: 'bi-calendar2-check', val: res.data.appointments || 0, suffix: '+', label: 'Rendez-vous pris' },
+            { icon: 'bi-geo-alt-fill', val: res.data.governorates || 0, suffix: '', label: 'Gouvernorats couverts' },
+          ]);
+        }
+      } catch (err) {
+        console.error("Erreur lors du chargement des stats publiques:", err);
+        // On garde les valeurs par défaut en cas d'erreur
+      }
+    };
+
+    fetchPublicStats();
   }, []);
 
   const roles = [
@@ -158,7 +223,6 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         </div>
@@ -175,7 +239,7 @@ export default function HomePage() {
           <div className="row align-items-center min-vh-100">
             <div className="col-lg-6 hp-hero-content">
               <div className="hp-hero-badge mb-3">
-                <i className="bi bi-patch-check-fill me-1"></i> Plateforme N°1 de gestion médicale en Tunisie
+                <i className="bi bi-patch-check-fill me-1"></i> Plateforme de gestion médicale en Tunisie
               </div>
               <h1 className="hp-hero-title">
                 Gérez votre cabinet médical <span className="hp-text-gradient">en toute simplicité</span>
@@ -185,8 +249,8 @@ export default function HomePage() {
                 Tout ce dont votre structure de santé a besoin, en une seule plateforme.
               </p>
               <div className="d-flex flex-wrap gap-3 mt-4">
-                <Link to="/register/patient" className="btn btn-primary btn-lg hp-btn-hero px-4">
-                  <i className="bi bi-rocket-takeoff me-2"></i>Démarrer maintenant
+                <Link to={user ? "/dashboard" : "/register/doctor"} className="btn btn-primary btn-lg hp-btn-hero px-4">
+                  <i className="bi bi-rocket-takeoff me-2"></i>{user ? "Mon Dashboard" : "Démarrer maintenant"}
                 </Link>
                 <a href="#features" className="btn btn-outline-light btn-lg px-4">
                   <i className="bi bi-play-circle me-2"></i>Découvrir
@@ -199,7 +263,7 @@ export default function HomePage() {
                 </div>
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-cloud-check text-primary fs-5"></i>
-                  <small>Cloud 99.9% uptime</small>
+                  <small>Cloud 69.9% uptime</small>
                 </div>
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-headset text-info fs-5"></i>
@@ -207,42 +271,55 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+            
+            {/* ══════════ VRAIES DONNÉES DANS LE MOCKUP DASHBOARD ══════════ */}
             <div className="col-lg-6 hp-hero-visual d-none d-lg-block">
               <div className="hp-hero-card">
                 <div className="hp-hero-card-header d-flex align-items-center gap-2 mb-3">
                   <div className="hp-dot hp-dot-red"></div>
                   <div className="hp-dot hp-dot-yellow"></div>
                   <div className="hp-dot hp-dot-green"></div>
-                  <span className="ms-auto small text-muted">HealthyCore.tn — Dashboard</span>
+                  <span className="ms-auto small text-muted">
+                    {user ? `Bonjour, Dr. ${user.last_name || user.username}` : 'HealthyCore.tn — Dashboard'}
+                  </span>
                 </div>
                 <div className="hp-mock-stat-row d-flex gap-3 mb-3">
                   <div className="hp-mock-stat flex-fill rounded-3 p-3">
                     <i className="bi bi-calendar-check text-primary fs-4"></i>
-                    <div className="fw-bold mt-2">24</div>
+                    <div className="fw-bold mt-2">
+                      {heroData.loading ? <span className="spinner-border spinner-border-sm"></span> : heroData.rdvToday}
+                    </div>
                     <small className="text-muted">RDV aujourd'hui</small>
                   </div>
                   <div className="hp-mock-stat flex-fill rounded-3 p-3">
                     <i className="bi bi-people text-success fs-4"></i>
-                    <div className="fw-bold mt-2">156</div>
+                    <div className="fw-bold mt-2">
+                      {heroData.loading ? <span className="spinner-border spinner-border-sm"></span> : heroData.patients}
+                    </div>
                     <small className="text-muted">Patients</small>
                   </div>
                   <div className="hp-mock-stat flex-fill rounded-3 p-3">
                     <i className="bi bi-clock-history text-warning fs-4"></i>
-                    <div className="fw-bold mt-2">5</div>
+                    <div className="fw-bold mt-2">
+                      {heroData.loading ? <span className="spinner-border spinner-border-sm"></span> : heroData.pending}
+                    </div>
                     <small className="text-muted">En attente</small>
                   </div>
                 </div>
                 <div className="hp-mock-list">
-                  {['Dr. Ben Ali — Cardiologie — 09:30', 'Mme. Trabelsi — Consultation — 10:15', 'M. Bouazizi — Suivi — 11:00'].map((item, i) => (
+                  {heroData.appointments.map((item, i) => (
                     <div key={i} className="hp-mock-item d-flex align-items-center gap-3 p-2 rounded-2 mb-2">
                       <div className="hp-mock-avatar rounded-circle d-flex align-items-center justify-content-center">
                         <i className="bi bi-person-fill text-white"></i>
                       </div>
                       <div className="flex-grow-1">
-                        <div className="fw-semibold small">{item.split(' — ')[0]}</div>
-                        <small className="text-muted">{item.split(' — ')[1]} — {item.split(' — ')[2]}</small>
+                        <div className="fw-semibold small">{item.doctor}</div>
+                        <small className="text-muted">{item.patient} — {item.reason}</small>
                       </div>
-                      <span className="badge bg-success-subtle text-success">Confirmé</span>
+                      <div className="d-flex flex-column align-items-end">
+                        <span className="badge bg-success-subtle text-success mb-1">Confirmé</span>
+                        <small className="text-muted fw-bold">{item.time}</small>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -257,19 +334,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ══════════ STATS BAR ══════════ */}
+      {/* ══════════ STATS BAR (AVEC VRAIES DONNÉES) ══════════ */}
       <section className="hp-stats py-5">
         <div className="container">
           <div className="row text-center g-4">
-            {[
-              { icon: 'bi-hospital', val: 500, suffix: '+', label: 'Cabinets médicaux' },
-              { icon: 'bi-people-fill', val: 15000, suffix: '+', label: 'Patients gérés' },
-              { icon: 'bi-calendar2-check', val: 200000, suffix: '+', label: 'Rendez-vous pris' },
-              { icon: 'bi-geo-alt-fill', val: 24, suffix: '', label: 'Gouvernorats couverts' },
-            ].map((s, i) => (
+            {publicStats.map((s, i) => (
               <div key={i} className="col-6 col-md-3">
                 <i className={`bi ${s.icon} hp-stat-icon`}></i>
-                <div className="hp-stat-val mt-2"><Counter end={s.val} suffix={s.suffix} /></div>
+                <div className="hp-stat-val mt-2">
+                  <Counter end={s.val} suffix={s.suffix} />
+                </div>
                 <div className="hp-stat-label">{s.label}</div>
               </div>
             ))}
@@ -407,7 +481,7 @@ export default function HomePage() {
             <div className="col-md-4">
               <PricingCard
                 name="Professionnel"
-                price="49"
+                price="89 TND"
                 period="mois"
                 highlighted
                 features={["3 cabinets médicaux", "5 médecins", "Patients illimités", "File d'attente virtuelle", "Messagerie intégrée", "Support prioritaire"]}
@@ -417,8 +491,7 @@ export default function HomePage() {
             <div className="col-md-4">
               <PricingCard
                 name="Enterprise"
-                price="99"
-                period="mois"
+                price="Sur devis"
                 features={["Cabinets illimités", "Médecins illimités", "Patients illimités", "Toutes les fonctionnalités", "API personnalisée", "Support dédié 24/7"]}
                 cta="Contacter les ventes"
               />
@@ -458,7 +531,7 @@ export default function HomePage() {
               pour gérer leur pratique au quotidien.
             </p>
             <div className="d-flex justify-content-center gap-3 flex-wrap">
-              <Link to="/register/patient" className="btn btn-light btn-lg px-5 hp-btn-cta">
+              <Link to="/register/doctor" className="btn btn-light btn-lg px-5 hp-btn-cta">
                 <i className="bi bi-rocket-takeoff me-2"></i>Créer mon compte
               </Link>
               <a href="#contact" className="btn btn-outline-light btn-lg px-4">

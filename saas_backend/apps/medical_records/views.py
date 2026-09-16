@@ -153,8 +153,7 @@ class DoctorMedicalRecordViewSet(viewsets.GenericViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # FIX: Créer d'abord, puis assigner le doctor manuellement
-        # car 'doctor' n'est pas dans les fields du WriteSerializer
+        # Créer d'abord, puis assigner le doctor manuellement
         record = serializer.save()
         record.doctor = doctor
         record.save(update_fields=['doctor'])
@@ -222,11 +221,19 @@ class DoctorMedicalRecordViewSet(viewsets.GenericViewSet):
         for p in patients_qs:
             info = {'id': p.id}
             if p.user:
-                info['full_name'] = p.user.get_full_name()
+                # Si first_name et last_name sont vides, on utilise username ou email
+                full_name = p.user.get_full_name()
+                if not full_name:
+                    full_name = p.user.username or p.user.email or f"Patient #{p.id}"
+                
+                info['full_name'] = full_name
                 if hasattr(p.user, 'phone_number') and p.user.phone_number:
                     info['phone_number'] = str(p.user.phone_number)
                 if hasattr(p.user, 'email') and p.user.email:
                     info['email'] = p.user.email
+            else:
+                info['full_name'] = f"Patient #{p.id}"
+                
             if hasattr(p, 'date_of_birth') and p.date_of_birth:
                 info['date_of_birth'] = str(p.date_of_birth)
             if hasattr(p, 'gender'):

@@ -76,14 +76,21 @@ export default function CabinetDirectory() {
 
   useEffect(() => { if (activeTab === 'cabinets') fetchCabinets(currentPage); }, [fetchCabinets, currentPage, activeTab]);
 
-  const fetchLabs = useCallback(async () => {
+    const fetchLabs = useCallback(async () => {
     setLoadingLabs(true);
-    try { const { data } = await api.get('/laboratories/doctor/labs/'); setLabs(data || []); } catch (err) { setMessage("Erreur lors du chargement des laboratoires."); } finally { setLoadingLabs(false); }
+    try { 
+      // ✅ FIX: Utilisation de la route publique au lieu de /doctor/labs/
+      const { data } = await api.get('/laboratories/public/labs/'); 
+      setLabs(data || []); 
+    } catch (err) { 
+      setMessage("Erreur lors du chargement des laboratoires."); 
+    } finally { 
+      setLoadingLabs(false); 
+    }
   }, []);
 
   useEffect(() => { if (activeTab === 'labs') fetchLabs(); }, [activeTab, fetchLabs]);
 
-  // ✅ FETCH PHARMACIES
   const fetchPharmacies = useCallback(async () => {
     setLoadingPharma(true);
     try {
@@ -118,15 +125,15 @@ export default function CabinetDirectory() {
   });
 
   const filteredCitiesCab = filtersCab.governorate ? filterOptions.cities.filter(c => String(c.governorate_id) === String(filtersCab.governorate)) : filterOptions.cities;
-  const withCoordsCount = cabinets.filter(c => c.latitude && c.longitude).length;
+  
+  // Compteurs pour la carte
+  const withCoordsCountCab = cabinets.filter(c => c.latitude && c.longitude).length;
+  const withCoordsCountLab = filteredLabs.filter(c => c.latitude && c.longitude).length;
+  const withCoordsCountPharma = pharmacies.filter(c => c.latitude && c.longitude).length;
 
   const goToProfile = (cabinetId) => navigate(`/cabinet-profile/${cabinetId}`);
   const goToLabProfile = (lab) => navigate(`/lab-profile/${lab.id}`, { state: { labData: lab } });
-  
-  // ✅ FONCTION AJOUTÉE POUR LA PHARMACIE
-  const goToPharmacyProfile = (pharma) => {
-    navigate(`/pharmacy-profile/${pharma.id}`, { state: { pharmacyData: pharma } });
-  };
+  const goToPharmacyProfile = (pharma) => navigate(`/pharmacy-profile/${pharma.id}`, { state: { pharmacyData: pharma } });
 
   const renderStars = (rating) => {
     if (!rating || rating === 0) return <span className="text-muted small">Non noté</span>;
@@ -141,13 +148,20 @@ export default function CabinetDirectory() {
     return (<span className="small"><span className="fw-semibold text-dark">{firstDay[0]?.substring(0, 3)}</span> : {firstDay[1]}{days.length > 1 && <span className="text-muted"> + {days.length - 1} jour(s)</span>}</span>);
   };
 
-  // Détermine la valeur de la ville en fonction de l'onglet actif
   const currentCityFilter = activeTab === 'cabinets' ? filtersCab.city : activeTab === 'labs' ? filterLabCity : filterPharmaCity;
   const handleCityChange = (val) => {
     if (activeTab === 'cabinets') setFiltersCab({ ...filtersCab, city: val });
     else if (activeTab === 'labs') setFilterLabCity(val);
     else setFilterPharmaCity(val);
   };
+
+  // Composant réutilisable pour le bouton de bascule Liste/Carte
+  const ViewToggle = ({ count, color }) => (
+    <div className="btn-group btn-group-sm" role="group">
+      <button type="button" className={`btn ${viewMode === 'list' ? `btn-${color}` : `btn-outline-${color}`}`} onClick={() => setViewMode('list')}><i className="bi bi-grid-3x3-gap me-1"></i> Liste</button>
+      <button type="button" className={`btn ${viewMode === 'map' ? `btn-${color}` : `btn-outline-${color}`}`} onClick={() => setViewMode('map')}><i className="bi bi-geo-alt me-1"></i> Carte{count > 0 && <span className={`badge bg-white text-${color} ms-1`}>{count}</span>}</button>
+    </div>
+  );
 
   return (
     <div className="container-fluid py-4">
@@ -159,9 +173,9 @@ export default function CabinetDirectory() {
       {message && (<div className="alert alert-danger alert-dismissible fade show" role="alert">{message}<button type="button" className="btn-close" onClick={() => setMessage('')} /></div>)}
 
       <ul className="nav nav-tabs mb-4">
-        <li className="nav-item"><button className={`nav-link ${activeTab === 'cabinets' ? 'active' : ''}`} onClick={() => setActiveTab('cabinets')}><i className="bi bi-building me-2"></i>Cabinets Médicaux</button></li>
-        <li className="nav-item"><button className={`nav-link ${activeTab === 'labs' ? 'active' : ''}`} onClick={() => setActiveTab('labs')}><i className="bi bi-clipboard2-pulse me-2"></i>Laboratoires d'Analyses</button></li>
-        <li className="nav-item"><button className={`nav-link ${activeTab === 'pharmacies' ? 'active' : ''}`} onClick={() => setActiveTab('pharmacies')}><i className="bi bi-shop me-2"></i>Pharmacies</button></li>
+        <li className="nav-item"><button className={`nav-link ${activeTab === 'cabinets' ? 'active' : ''}`} onClick={() => { setActiveTab('cabinets'); setViewMode('list'); }}><i className="bi bi-building me-2"></i>Cabinets Médicaux</button></li>
+        <li className="nav-item"><button className={`nav-link ${activeTab === 'labs' ? 'active' : ''}`} onClick={() => { setActiveTab('labs'); setViewMode('list'); }}><i className="bi bi-clipboard2-pulse me-2"></i>Laboratoires d'Analyses</button></li>
+        <li className="nav-item"><button className={`nav-link ${activeTab === 'pharmacies' ? 'active' : ''}`} onClick={() => { setActiveTab('pharmacies'); setViewMode('list'); }}><i className="bi bi-shop me-2"></i>Pharmacies</button></li>
       </ul>
 
       <div className="row g-4">
@@ -227,10 +241,7 @@ export default function CabinetDirectory() {
             <>
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="text-muted small"><strong>{totalCount}</strong> cabinet(s) trouvé(s){activeCabFilterCount > 0 && ` avec ${activeCabFilterCount} filtre(s)`}</div>
-                <div className="btn-group btn-group-sm" role="group">
-                  <button type="button" className={`btn ${viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setViewMode('list')}><i className="bi bi-grid-3x3-gap me-1"></i> Liste</button>
-                  <button type="button" className={`btn ${viewMode === 'map' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setViewMode('map')}><i className="bi bi-geo-alt me-1"></i> Carte{withCoordsCount > 0 && <span className="badge bg-white text-primary ms-1">{withCoordsCount}</span>}</button>
-                </div>
+                <ViewToggle count={withCoordsCountCab} color="primary" />
               </div>
 
               {loading ? (<div className="text-center py-5"><div className="spinner-border text-primary" role="status" /><p className="mt-2 text-muted">Recherche de cabinets...</p></div>) : cabinets.length === 0 ? (
@@ -300,12 +311,15 @@ export default function CabinetDirectory() {
             <>
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="text-muted small"><strong>{filteredLabs.length}</strong> laboratoire(s) trouvé(s){activeLabFilterCount > 0 && ` avec ${activeLabFilterCount} filtre(s)`}</div>
+                <ViewToggle count={withCoordsCountLab} color="info" />
               </div>
 
               {loadingLabs ? (
-                <div className="text-center py-5"><div className="spinner-border text-primary" role="status" /><p className="mt-2 text-muted">Recherche de laboratoires...</p></div>
+                <div className="text-center py-5"><div className="spinner-border text-info" role="status" /><p className="mt-2 text-muted">Recherche de laboratoires...</p></div>
               ) : filteredLabs.length === 0 ? (
-                <div className="text-center py-5"><i className="bi bi-clipboard2-pulse display-1 text-muted"></i><h5 className="mt-3 text-muted">Aucun laboratoire trouvé</h5><p className="text-muted">Essayez de modifier vos critères de recherche</p><button className="btn btn-outline-primary btn-sm mt-2" onClick={clearFiltersLab}><i className="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser</button></div>
+                <div className="text-center py-5"><i className="bi bi-clipboard2-pulse display-1 text-muted"></i><h5 className="mt-3 text-muted">Aucun laboratoire trouvé</h5><p className="text-muted">Essayez de modifier vos critères de recherche</p><button className="btn btn-outline-info btn-sm mt-2" onClick={clearFiltersLab}><i className="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser</button></div>
+              ) : viewMode === 'map' ? (
+                <MapView cabinets={filteredLabs} onCabinetClick={(lab) => goToLabProfile(lab)} />
               ) : (
                 <div className="row g-3">
                   {filteredLabs.map(lab => (
@@ -350,17 +364,19 @@ export default function CabinetDirectory() {
             <>
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="text-muted small"><strong>{pharmacies.length}</strong> pharmacie(s) trouvée(s){activePharmaFilterCount > 0 && ` avec ${activePharmaFilterCount} filtre(s)`}</div>
+                <ViewToggle count={withCoordsCountPharma} color="success" />
               </div>
 
               {loadingPharma ? (
-                <div className="text-center py-5"><div className="spinner-border text-primary" role="status" /><p className="mt-2 text-muted">Recherche de pharmacies...</p></div>
+                <div className="text-center py-5"><div className="spinner-border text-success" role="status" /><p className="mt-2 text-muted">Recherche de pharmacies...</p></div>
               ) : pharmacies.length === 0 ? (
-                <div className="text-center py-5"><i className="bi bi-shop display-1 text-muted"></i><h5 className="mt-3 text-muted">Aucune pharmacie trouvée</h5><p className="text-muted">Essayez de modifier vos critères de recherche</p><button className="btn btn-outline-primary btn-sm mt-2" onClick={clearFiltersPharma}><i className="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser</button></div>
+                <div className="text-center py-5"><i className="bi bi-shop display-1 text-muted"></i><h5 className="mt-3 text-muted">Aucune pharmacie trouvée</h5><p className="text-muted">Essayez de modifier vos critères de recherche</p><button className="btn btn-outline-success btn-sm mt-2" onClick={clearFiltersPharma}><i className="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser</button></div>
+              ) : viewMode === 'map' ? (
+                <MapView cabinets={pharmacies} onCabinetClick={(pharma) => goToPharmacyProfile(pharma)} />
               ) : (
                 <div className="row g-3">
                   {pharmacies.map(pharma => (
                     <div key={pharma.id} className="col-md-6">
-                      {/* ✅ AJOUT DE onClick ET cursor:'pointer' ICI */}
                       <div className="card h-100 shadow-sm border-0 hover-shadow" style={{ transition: 'box-shadow 0.2s', cursor: 'pointer' }} onClick={() => goToPharmacyProfile(pharma)}>
                         <div className="card-body">
                           <div className="d-flex gap-3 mb-3">

@@ -1,14 +1,15 @@
 // src/dashboards/SecretaryDashboard.jsx
-// ──────────────────────────────────────────────────────────────
-// Tableau de bord Secrétaire — Premium
-// MedSaaS Pro | Bootstrap 5 CDN | Service api | useAuth
-// ──────────────────────────────────────────────────────────────
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './Dashboardcss/SecretaryDashboard.css';
+
+// Importation Recharts
+import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 /* ══════════════════ Helpers ══════════════════ */
 
@@ -35,30 +36,15 @@ function fmtTime(str) {
 function statusBadge(status) {
   const s = (status || '').toLowerCase();
   const map = {
+    scheduled:    { label: 'Programmé', cls: 'bg-primary-subtle text-primary' },
     confirmed:    { label: 'Confirmé', cls: 'bg-success-subtle text-success' },
-    'confirmé':   { label: 'Confirmé', cls: 'bg-success-subtle text-success' },
-    pending:      { label: 'En attente', cls: 'bg-warning-subtle text-warning' },
-    en_attente:   { label: 'En attente', cls: 'bg-warning-subtle text-warning' },
-    cancelled:    { label: 'Annulé', cls: 'bg-danger-subtle text-danger' },
-    'annulé':     { label: 'Annulé', cls: 'bg-danger-subtle text-danger' },
+    in_progress:  { label: 'En cours', cls: 'bg-warning-subtle text-warning' },
     completed:    { label: 'Terminé', cls: 'bg-info-subtle text-info' },
-    'terminé':    { label: 'Terminé', cls: 'bg-info-subtle text-info' },
-    in_progress:  { label: 'En cours', cls: 'bg-primary-subtle text-primary' },
-    en_cours:     { label: 'En cours', cls: 'bg-primary-subtle text-primary' },
+    cancelled:    { label: 'Annulé', cls: 'bg-danger-subtle text-danger' },
     no_show:      { label: 'Absent', cls: 'bg-danger-subtle text-danger' },
-    absent:       { label: 'Absent', cls: 'bg-danger-subtle text-danger' },
-    upcoming:     { label: 'À venir', cls: 'bg-primary-subtle text-primary' },
-    waiting:      { label: 'En salle', cls: 'bg-warning-subtle text-warning' },
   };
   const m = map[s] || { label: status || '—', cls: 'bg-secondary-subtle text-secondary' };
   return <span className={`sec-badge ${m.cls}`}>{m.label}</span>;
-}
-
-const AVATAR_COLORS = ['#0d6efd', '#198754', '#6f42c1', '#d63384', '#fd7e14', '#0dcaf0', '#dc3545', '#20c997'];
-function avatarColor(name) {
-  let h = 0;
-  for (let i = 0; i < (name || '').length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
 /* ══════════════════ Composant principal ══════════════════ */
@@ -95,48 +81,33 @@ export default function SecretaryDashboard() {
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      // ✅ RDV du jour — endpoint CORRECT : /appointments/secretary/records/
-      const apptRes = await api.get('/appointments/secretary/records/', {
-        params: { date: today, page_size: 15 },
+      // ✅ RDV du jour
+      const apptRes = await api.get('/appointments/secretary/', {
+        params: { date: today, page_size: 100 },
       }).catch(() => ({ data: { results: [] } }));
       const apptList = apptRes.data.results || apptRes.data || [];
       setAppointments(apptList);
 
-      const completed = apptList.filter(a => {
-        const s = (a.status || '').toLowerCase();
-        return s === 'completed' || s === 'terminé';
-      }).length;
-      const cancelled = apptList.filter(a => {
-        const s = (a.status || '').toLowerCase();
-        return s === 'cancelled' || s === 'annulé' || s === 'no_show' || s === 'absent';
-      }).length;
+      const completed = apptList.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+      const cancelled = apptList.filter(a => ['cancelled', 'no_show'].includes((a.status || '').toLowerCase())).length;
 
-      // ✅ File d'attente — déjà fonctionnel
-      const queueRes = await api.get('/waiting-queue/secretary/today/')
-        .catch(() => ({ data: [] }));
+      // ✅ File d'attente
+      const queueRes = await api.get('/waiting-queue/secretary/today/').catch(() => ({ data: [] }));
       const queueList = queueRes.data.results || queueRes.data || [];
       setQueue(queueList);
 
-      // ✅ Dossiers médicaux — endpoint CORRECT : /medical-records/secretary/stats/
-      const recRes = await api.get('/medical-records/secretary/stats/')
-        .catch(() => ({ data: {} }));
-      const totalRecords = recRes.data.total_records
-        || recRes.data.total_patients
-        || recRes.data.count
-        || 0;
+      // ✅ Dossiers médicaux
+      const recRes = await api.get('/medical-records/secretary/stats/').catch(() => ({ data: {} }));
+      const totalRecords = recRes.data.total_records || recRes.data.total_patients || recRes.data.count || 0;
 
-      // ✅ Messages — déjà fonctionnel
-      const msgRes = await api.get('/messaging/conversations/')
-        .catch(() => ({ data: [] }));
+      // ✅ Messages
+      const msgRes = await api.get('/messaging/conversations/').catch(() => ({ data: [] }));
       const msgList = msgRes.data.results || msgRes.data || [];
       const unread = msgList.reduce((s, c) => s + (c.unread_count || 0), 0);
 
       // Générer des alertes intelligentes
       const autoAlerts = [];
-      const pendingAppts = apptList.filter(a => {
-        const s = (a.status || '').toLowerCase();
-        return s === 'pending' || s === 'en_attente';
-      });
+      const pendingAppts = apptList.filter(a => (a.status || '').toLowerCase() === 'scheduled');
       if (pendingAppts.length > 0) {
         autoAlerts.push({
           type: 'warning',
@@ -188,17 +159,64 @@ export default function SecretaryDashboard() {
   }, [loadData]);
 
   // ── Séparation des RDV : à venir vs passés ──
+  // ✅ FIX: Utiliser date_time (champ du backend) au lieu de start_time
   const now = new Date();
   const upcomingAppts = appointments.filter(a => {
-    const t = a.start_time || a.time_slot;
+    const t = a.date_time || a.start_time;
     if (!t) return true;
     return new Date(t) >= now;
   });
   const pastAppts = appointments.filter(a => {
-    const t = a.start_time || a.time_slot;
+    const t = a.date_time || a.start_time;
     if (!t) return false;
     return new Date(t) < now;
   });
+
+  // ── Calculs pour les graphiques (Recharts) ──
+  const { statusData, hourlyData } = useMemo(() => {
+    const statusCounts = {
+      'Confirmés': 0,
+      'Terminés': 0,
+      'Programmés': 0, // Inclut scheduled et in_progress
+      'Annulés': 0,
+    };
+    
+    const hourCounts = {};
+    // Initialiser les heures de 8h à 18h
+    for(let i=8; i<=18; i++) {
+      hourCounts[`${i}h`] = 0;
+    }
+
+    appointments.forEach(apt => {
+      // ✅ FIX: Statuts exacts du backend
+      const s = (apt.status || '').toLowerCase();
+      if (s === 'completed') statusCounts['Terminés']++;
+      else if (s === 'confirmed') statusCounts['Confirmés']++;
+      else if (s === 'scheduled' || s === 'in_progress') statusCounts['Programmés']++;
+      else if (s === 'cancelled' || s === 'no_show') statusCounts['Annulés']++;
+      
+      // ✅ FIX: Utiliser date_time (champ du backend) au lieu de start_time
+      const t = apt.date_time || apt.start_time;
+      if (t) {
+        const d = new Date(t);
+        const h = d.getHours();
+        if (h >= 8 && h <= 18) {
+          hourCounts[`${h}h`] = (hourCounts[`${h}h`] || 0) + 1;
+        }
+      }
+    });
+
+    const sData = [
+      { name: 'Confirmés', value: statusCounts['Confirmés'], color: '#0d6efd' },
+      { name: 'Terminés', value: statusCounts['Terminés'], color: '#198754' },
+      { name: 'Programmés', value: statusCounts['Programmés'], color: '#ffc107' },
+      { name: 'Annulés', value: statusCounts['Annulés'], color: '#dc3545' },
+    ].filter(item => item.value > 0);
+
+    const hData = Object.entries(hourCounts).map(([hour, count]) => ({ name: hour, rdv: count }));
+
+    return { statusData: sData, hourlyData: hData };
+  }, [appointments]);
 
   /* ════════════ RENDU ════════════ */
 
@@ -425,6 +443,69 @@ export default function SecretaryDashboard() {
         </div>
       </div>
 
+      {/* ══════════ ANALYTIQUE SANTÉ (RECHARTS) ══════════ */}
+      <div className="mb-4">
+        <h6 className="sec-section-title">
+          <i className="bi bi-graph-up-arrow"></i>Vue d'ensemble de la journée
+        </h6>
+        <div className="row g-4">
+          <div className="col-lg-8">
+            <div className="sec-panel h-100">
+              <div className="panel-head">
+                <h6><i className="bi bi-activity me-2 text-primary"></i>Charge de la journée</h6>
+              </div>
+              <div className="panel-body" style={{ height: '300px', padding: '1rem 1.25rem' }}>
+                {appointments.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorRdv" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#0d6efd" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#0d6efd" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                      <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                      <Area type="monotone" dataKey="rdv" name="Rendez-vous" stroke="#0d6efd" strokeWidth={3} fillOpacity={1} fill="url(#colorRdv)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center text-muted small d-flex align-items-center justify-content-center h-100">
+                    Aucune donnée disponible pour aujourd'hui
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="col-lg-4">
+            <div className="sec-panel h-100">
+              <div className="panel-head">
+                <h6><i className="bi bi-pie-chart me-2 text-success"></i>Statut des RDV</h6>
+              </div>
+              <div className="panel-body d-flex align-items-center justify-content-center" style={{ height: '300px', padding: '1rem' }}>
+                {statusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3}>
+                        {statusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center text-muted small">Aucune donnée disponible</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ══════════ CONTENU PRINCIPAL ══════════ */}
       <div className="row g-4">
 
@@ -471,7 +552,7 @@ export default function SecretaryDashboard() {
                       {upcomingAppts.map((apt, idx) => {
                         const patientName = apt.patient_name || apt.patient_first_name || 'Patient';
                         const s = (apt.status || '').toLowerCase();
-                        const isCurrent = s === 'in_progress' || s === 'en_cours';
+                        const isCurrent = s === 'in_progress';
                         const bgColor = isCurrent ? 'rgba(253,126,20,0.08)' : 'transparent';
                         const borderColor = isCurrent ? '#fd7e14' : 'transparent';
 
@@ -482,7 +563,8 @@ export default function SecretaryDashboard() {
                             style={{ background: bgColor, borderLeft: isCurrent ? '3px solid #fd7e14' : '3px solid transparent', borderRadius: '8px', padding: '0.7rem 0.85rem' }}
                           >
                             <div className="sec-appt-time-box" style={{ background: isCurrent ? 'rgba(253,126,20,0.15)' : 'var(--sec-blue-light)', color: isCurrent ? '#e8590c' : '#0d6efd' }}>
-                              <span className="time-val">{fmtTime(apt.start_time || apt.time_slot)}</span>
+                              {/* ✅ FIX: Utiliser date_time */}
+                              <span className="time-val">{fmtTime(apt.date_time || apt.start_time)}</span>
                               <span className="time-label">heure</span>
                             </div>
                             <div className="flex-grow-1">
@@ -531,7 +613,8 @@ export default function SecretaryDashboard() {
                             style={{ opacity: 0.7 }}
                           >
                             <div className="sec-appt-time-box" style={{ background: '#f1f5f9', color: '#94a3b8' }}>
-                              <span className="time-val">{fmtTime(apt.start_time || apt.time_slot)}</span>
+                              {/* ✅ FIX: Utiliser date_time */}
+                              <span className="time-val">{fmtTime(apt.date_time || apt.start_time)}</span>
                               <span className="time-label">heure</span>
                             </div>
                             <div className="flex-grow-1">

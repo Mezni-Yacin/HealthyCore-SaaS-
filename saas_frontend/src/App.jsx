@@ -3,7 +3,7 @@
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import Login from './pages/Login';
+import Login from './pages/auth/Login';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
@@ -22,6 +22,10 @@ import SubscriptionsManagement from './pages/Super_admin/SubscriptionsManagement
 import SuperAdminLabs from './pages/Super_admin/SuperAdminLabs';
 import SuperAdminLabTests from './pages/Super_admin/SuperAdminLabTests';
 import SuperAdminLabRequests from './pages/Super_admin/SuperAdminLabRequests';
+import PublicProfile from './pages/PublicProfile';
+import PharmacistCommande from './pages/Pharmacy/PharmacistCommande'; 
+
+
 // Doctor
 import DoctorMedicalRecords from './pages/Doctor/DoctorMedicalRecords';
 import DoctorMedicalRecordDetail from './pages/Doctor/DoctorMedicalRecordDetail';
@@ -29,7 +33,7 @@ import DoctorSchedule from './pages/Doctor/DoctorSchedule';
 import DoctorSecretaries from './pages/Doctor/DoctorSecretaries';
 import DoctorAppointments from './pages/Doctor/DoctorAppointments';
 import DoctorAppointmentDetail from './pages/Doctor/DoctorAppointmentDetail';
-import DoctorLab from './pages/DoctorLab';
+import DoctorLab from './pages/Doctor/DoctorLab';
 import DoctorPrescriptions from './pages/Doctor/DoctorPrescriptions';
 
 // Patient
@@ -37,7 +41,7 @@ import PatientMedicalRecords from './pages/Patient/PatientMedicalRecords';
 import PatientMedicalRecordDetail from './pages/Patient/PatientMedicalRecordDetail';
 import PatientAppointments from './pages/Patient/PatientAppointments';
 import PatientAppointmentDetail from './pages/Patient/PatientAppointmentDetail';
-import PatientLab from './pages/PatientLab';
+import PatientLab from './pages/Patient/PatientLab';
 import PatientPharmacy from './pages/Patient/PatientPharmacy';
 // Secretary
 import SecretaryMedicalRecords from './pages/Secretary/SecretaryMedicalRecords';
@@ -48,8 +52,10 @@ import SecretaryCabinets from './pages/Secretary/SecretaryCabinets';
 import SecretaryCabinetEdit from './pages/Secretary/SecretaryCabinetEdit';
 
 // Laboratoire (Lab Staff)
-import LabStaffLab from './pages/LabStaffLab';
-import LabProfile from './pages/LabProfile'; 
+import LabWorkflowTab from './pages/lab-staff/LabWorkflowTab'; 
+import LabCatalogTab from './pages/lab-staff/LabCatalogTab';   
+import LabSettingsTab from './pages/lab-staff/LabSettingsTab';
+import LabProfile from './pages/Cabinet/LabProfile'; 
 // Cabinet
 import CabinetDirectory from './pages/Cabinet/CabinetDirectory';
 import CabinetProfile from './pages/Cabinet/CabinetProfile';
@@ -57,6 +63,7 @@ import CabinetProfile from './pages/Cabinet/CabinetProfile';
 // Chat
 import ChatPage from './pages/Chat/ChatPage';
 import MessagesPage from './pages/Chat/MessagesPage';
+import PatientPayments from './pages/Patient/PatientPayments'; 
 
 // Pharmacien
 import PharmacistPOS from './pages/Pharmacy/PharmacistPOS';
@@ -70,15 +77,15 @@ import PublicPharmacyProfile from './pages/Cabinet/PublicPharmacyProfile';
 
 import HomePage from './pages/HomePage';
 
-import DoctorWaitingQueue from './pages/DoctorWaitingQueue';
-import PatientWaitingQueue from './pages/PatientWaitingQueue';
-import SecretaryWaitingQueue from './pages/SecretaryWaitingQueue';
+import DoctorWaitingQueue from './pages/Doctor/DoctorWaitingQueue';
+import PatientWaitingQueue from './pages/Patient/PatientWaitingQueue';
+import SecretaryWaitingQueue from './pages/Secretary/SecretaryWaitingQueue';
 
-import SuperAdminInvoices from './pages/SuperAdminInvoices';
-import DoctorInvoices from './pages/DoctorInvoices';
-import SecretaryInvoices from './pages/SecretaryInvoices';
-import PatientInvoices from './pages/PatientInvoices';
-import Register from './pages/Register';
+import SuperAdminInvoices from './pages/Super_admin/SuperAdminInvoices';
+import DoctorInvoices from './pages/Doctor/DoctorInvoices';
+import SecretaryInvoices from './pages/Secretary/SecretaryInvoices';
+import PatientInvoices from './pages/Patient/PatientInvoices';
+import Register from './pages/auth/Register';
 import AccountRequests from './pages/Super_admin/AccountRequests';
 
 
@@ -101,7 +108,8 @@ function App() {
           {/* Pages publiques */}
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<Login />} />
-                        <Route path="/register/:role" element={<Register />} />
+          <Route path="/register/:role" element={<Register />} />
+          <Route path="/user/:id" element={<PublicProfile />} />
 
 
           {/* Pages protégées */}
@@ -110,10 +118,12 @@ function App() {
               {/* ====================== COMMUN ====================== */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
+              
 
               <Route path="/chat/:cabinetId" element={<ChatPage />} />
-                            <Route path="/pharmacy-profile/:id" element={<PublicPharmacyProfile />} /> {/* ✅ AJOUT ICI */}
+              <Route path="/pharmacy-profile/:id" element={<PublicPharmacyProfile />} />
               <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/chat/direct/:conversationId" element={<ChatPage type="direct" />} />
 
               {/* ====================== PROFIL CABINET PUBLIC ====================== */}
               <Route path="/cabinet-profile/:id" element={<CabinetProfile />} />
@@ -127,6 +137,7 @@ function App() {
               <Route path="/patient-invoices" element={<PatientInvoices />} />
               <Route path="/patient-lab" element={<PatientLab />} />
               <Route path="/patient-pharmacy" element={<PatientPharmacy />} />
+              <Route path="/patient/payments" element={<PatientPayments />} />
 
               {/* ====================== SECRÉTAIRE ====================== */}
               <Route path="/secretary-cabinets" element={<SecretaryCabinets />} />
@@ -152,14 +163,16 @@ function App() {
               <Route path="/doctor-prescriptions" element={<DoctorPrescriptions />} />
 
               {/* ====================== LABORATOIRE (Lab Staff) ====================== */}
-              <Route path="/lab-staff" element={<LabStaffLab />} />
-
+              <Route path="/lab-staff/workflow" element={<LabWorkflowTab />} />
+              <Route path="/lab-staff/catalog" element={<LabCatalogTab />} />
+              <Route path="/lab-staff/settings" element={<LabSettingsTab />} />
             {/* ====================== PHARMACIEN ====================== */}
             <Route path="/pharmacy-pos" element={<PharmacistPOS />} />
             <Route path="/pharmacy-stock" element={<PharmacistStock />} />
             <Route path="/pharmacy-prescriptions" element={<PharmacistPrescriptions />} />
             <Route path="/pharmacy-sales" element={<PharmacistSales />} />
             <Route path="/pharmacy-profile" element={<PharmacyProfile />} />
+             <Route path="/pharmacy-orders" element={<PharmacistCommande />} />
 
               {/* ====================== FILE D'ATTENTE ====================== */}
               <Route path="/waiting-queue" element={<DoctorWaitingQueue />} />
@@ -178,7 +191,7 @@ function App() {
               <Route path="/invoices-management" element={<SuperAdminInvoices />} />
               <Route path="/admin-labs" element={<SuperAdminLabs />} />
               <Route path="/admin-lab-tests" element={<SuperAdminLabTests />} />
-                            <Route path="/account-requests" element={<AccountRequests />} /> 
+              <Route path="/account-requests" element={<AccountRequests />} /> 
 
               <Route path="/admin-lab-requests" element={<SuperAdminLabRequests />} />
 

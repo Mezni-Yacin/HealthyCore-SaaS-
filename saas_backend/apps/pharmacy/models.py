@@ -179,3 +179,41 @@ class DispensationItem(models.Model):
 
     def __str__(self):
         return f"{self.medication.name} x{self.quantity}"
+    
+# ══════════════════ MODÈLE : COMMANDE PATIENT (CLICK & COLLECT) ══════════════════
+
+class Order(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'En attente'),
+        ('accepted', 'Acceptée'),
+        ('rejected', 'Refusée'),
+        ('completed', 'Récupérée'),
+    )
+    
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='pharmacy_orders')
+    pharmacy = models.ForeignKey(Pharmacy, on_delete=models.CASCADE, related_name='orders')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes = models.TextField(blank=True, null=True, verbose_name=_("Notes du patient"))
+    pharmacist_response = models.TextField(blank=True, null=True, verbose_name=_("Réponse du pharmacien"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Commande")
+        verbose_name_plural = _("Commandes")
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Commande {self.id} - {self.patient} - {self.pharmacy.name}"
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    medication = models.ForeignKey(Medication, on_delete=models.PROTECT)
+    quantity = models.PositiveIntegerField(verbose_name=_("Quantité demandée"))
+
+    class Meta:
+        verbose_name = _("Ligne de commande")
+        verbose_name_plural = _("Lignes de commande")
+
+    def __str__(self):
+        return f"{self.medication.name} x{self.quantity}"
